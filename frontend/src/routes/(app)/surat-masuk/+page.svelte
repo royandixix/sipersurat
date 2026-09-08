@@ -32,8 +32,7 @@
 
 	let records=$state<IncomingMailRecord[]>([]);
 	let masterData=$state<MasterDataRecord[]>([]);
-	
-	let seatch=$state('');
+	let search=$state('');
 	let categoryFilter=$state('ALL');
 	let priorityFilter=$state('ALL');
 	let statusFilter=$state<'ALL'|IncomingMailStatus>('ALL');
@@ -55,35 +54,18 @@
 	});
 
 	const categories=$derived.by(()=>{
-		const items=masterData
-			.filter((item)=>item.type==='KATEGORI_SURAT'&&item.status==='ACTIVE')
-			.map((item)=>item.name);
-		return(items.length?items:fallbackCategories).map((value)=>({
-			value,
-			label:value
-		}));
+		const items=masterData.filter((item)=>item.type==='KATEGORI_SURAT'&&item.status==='ACTIVE').map((item)=>item.name);
+		return(items.length?items:fallbackCategories).map((value)=>({value,label:value}));
 	});
 
 	const priorities=$derived.by(()=>{
-		const items=masterData
-			.filter((item)=>item.type==='SIFAT_SURAT'&&item.status==='ACTIVE')
-			.map((item)=>item.name);
-		return(items.length?items:fallbackPriorities).map((value)=>({
-			value,
-			label:value
-		}));
+		const items=masterData.filter((item)=>item.type==='SIFAT_SURAT'&&item.status==='ACTIVE').map((item)=>item.name);
+		return(items.length?items:fallbackPriorities).map((value)=>({value,label:value}));
 	});
 
-	
-
 	const units=$derived.by(()=>{
-		const items=masterData
-			.filter((item)=>item.type==='UNIT_KERJA'&&item.status==='ACTIVE')
-			.map((item)=>item.name);
-		return(items.length?items:fallbackUnits).map((value)=>({
-			value,
-			label:value
-		}));
+		const items=masterData.filter((item)=>item.type==='UNIT_KERJA'&&item.status==='ACTIVE').map((item)=>item.name);
+		return(items.length?items:fallbackUnits).map((value)=>({value,label:value}));
 	});
 
 	const filteredRecords=$derived(records.filter((record)=>{
@@ -99,38 +81,16 @@
 		const matchesPriority=priorityFilter==='ALL'||record.priority===priorityFilter;
 		const matchesStatus=statusFilter==='ALL'||record.status===statusFilter;
 		const matchesDate=!dateFilter||record.receivedDate===dateFilter;
-		const matchesDate= !dateFilter || record.receivedDate === dateFilter; 
 		return matchesSearch&&matchesCategory&&matchesPriority&&matchesStatus&&matchesDate;
 	}));
 
 	const totalPages=$derived(Math.max(1,Math.ceil(filteredRecords.length/perPage)));
-
-	const paginatedRecords=$derived(
-		filteredRecords.slice((currentPage-1)*perPage,currentPage*perPage)
-	);
-
+	const paginatedRecords=$derived(filteredRecords.slice((currentPage-1)*perPage,currentPage*perPage));
 	const todayValue=$derived(new Date().toISOString().slice(0,10));
-
-	const todayCount=$derived(
-		records.filter((record)=>record.receivedDate===todayValue).length
-	);
-
-	const pendingCount=$derived(
-		records.filter((record)=>record.status==='PENDING_DISPOSITION').length
-	);
-
-	const completedCount=$derived(
-		records.filter((record)=>record.status==='COMPLETED'||record.status==='ARCHIVED').length
-	);
-
-	const hasFilter=$derived(
-		search.trim()!==''||
-		categoryFilter!=='ALL'||
-		priorityFilter!=='ALL'||
-		statusFilter!=='ALL'||
-		dateFilter!==''
-	);
-
+	const todayCount=$derived(records.filter((record)=>record.receivedDate===todayValue).length);
+	const pendingCount=$derived(records.filter((record)=>record.status==='PENDING_DISPOSITION').length);
+	const completedCount=$derived(records.filter((record)=>record.status==='COMPLETED'||record.status==='ARCHIVED').length);
+	const hasFilter=$derived(search.trim()!==''||categoryFilter!=='ALL'||priorityFilter!=='ALL'||statusFilter!=='ALL'||dateFilter!=='');
 	const nextAgendaNumber=$derived(generateAgendaNumber(records));
 
 	$effect(()=>{
@@ -153,10 +113,7 @@
 			records=await getIncomingMails();
 		}catch(error){
 			records=[];
-			notify(
-				getErrorMessage(error,'Data surat masuk gagal dimuat.'),
-				'info'
-			);
+			notify(getErrorMessage(error,'Data surat masuk gagal dimuat.'),'info');
 		}
 	}
 
@@ -210,34 +167,23 @@
 				notify('Surat masuk berhasil ditambahkan.');
 			}else if(selectedRecord){
 				const saved=await updateIncomingMail(selectedRecord.id,payload);
-				records=records.map((record)=>
-					record.id===saved.id?saved:record
-				);
-				if(detailRecord?.id===saved.id){
-					detailRecord=saved;
-				}
+				records=records.map((record)=>record.id===saved.id?saved:record);
+				if(detailRecord?.id===saved.id)detailRecord=saved;
 				notify('Surat masuk berhasil diperbarui.');
 			}
 			formOpen=false;
 			selectedRecord=null;
 			currentPage=1;
 		}catch(error){
-			notify(
-				getErrorMessage(error,'Surat masuk gagal disimpan.'),
-				'info'
-			);
+			notify(getErrorMessage(error,'Surat masuk gagal disimpan.'),'info');
 		}
 	}
 
 	async function changeStatus(record:IncomingMailRecord,status:IncomingMailStatus){
 		try{
 			const saved=await updateIncomingMailStatus(record.id,status);
-			records=records.map((item)=>
-				item.id===saved.id?saved:item
-			);
-			if(detailRecord?.id===saved.id){
-				detailRecord=saved;
-			}
+			records=records.map((item)=>item.id===saved.id?saved:item);
+			if(detailRecord?.id===saved.id)detailRecord=saved;
 			if(status==='ARCHIVED'){
 				notify('Surat berhasil diarsipkan.');
 			}else if(status==='COMPLETED'){
@@ -246,10 +192,7 @@
 				notify('Status surat berhasil diperbarui.');
 			}
 		}catch(error){
-			notify(
-				getErrorMessage(error,'Status surat gagal diperbarui.'),
-				'info'
-			);
+			notify(getErrorMessage(error,'Status surat gagal diperbarui.'),'info');
 		}
 	}
 
@@ -270,10 +213,7 @@
 			deleteTarget=null;
 			notify('Surat masuk berhasil dihapus.');
 		}catch(error){
-			notify(
-				getErrorMessage(error,'Surat masuk gagal dihapus.'),
-				'info'
-			);
+			notify(getErrorMessage(error,'Surat masuk gagal dihapus.'),'info');
 		}
 	}
 
@@ -296,16 +236,10 @@
 		<div class="flex flex-col justify-between gap-6 md:flex-row md:items-start">
 			<div class="min-w-0" in:fly={{y:18,duration:450}}>
 				<h1 class="text-2xl font-bold tracking-tight md:text-[28px]">Surat Masuk</h1>
-				<p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-					Kelola pencatatan, klasifikasi, dokumen, dan proses tindak lanjut seluruh surat yang diterima oleh instansi secara terpusat. Pantau status surat mulai dari diterima, menunggu disposisi, diproses, hingga selesai dan diarsipkan.
-				</p>
+				<p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Kelola pencatatan, klasifikasi, dokumen, dan proses tindak lanjut seluruh surat yang diterima oleh instansi secara terpusat. Pantau status surat mulai dari diterima, menunggu disposisi, diproses, hingga selesai dan diarsipkan.</p>
 			</div>
 			<div class="shrink-0" in:fly={{y:14,duration:420,delay:100}}>
-				<Button
-					type="button"
-					class="h-10 w-full rounded-lg px-4 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md md:w-auto"
-					onclick={openCreate}
-				>
+				<Button type="button" class="h-10 w-full rounded-lg px-4 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md md:w-auto" onclick={openCreate}>
 					<Plus class="size-4"/>
 					Tambah Surat Masuk
 				</Button>
@@ -323,9 +257,7 @@
 							</div>
 						</div>
 						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{records.length}</p>
-						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
-							Seluruh surat masuk yang telah tercatat pada sistem.
-						</p>
+						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">Seluruh surat masuk yang telah tercatat pada sistem.</p>
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -340,9 +272,7 @@
 							</div>
 						</div>
 						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{todayCount}</p>
-						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
-							Surat baru yang diterima dan dicatat pada hari ini.
-						</p>
+						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">Surat baru yang diterima dan dicatat pada hari ini.</p>
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -357,9 +287,7 @@
 							</div>
 						</div>
 						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{pendingCount}</p>
-						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
-							Surat yang masih menunggu arahan atau disposisi pimpinan.
-						</p>
+						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">Surat yang masih menunggu arahan atau disposisi pimpinan.</p>
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -374,9 +302,7 @@
 							</div>
 						</div>
 						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{completedCount}</p>
-						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
-							Surat yang proses tindak lanjutnya telah selesai atau diarsipkan.
-						</p>
+						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">Surat yang proses tindak lanjutnya telah selesai atau diarsipkan.</p>
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -388,29 +314,18 @@
 					<div class="flex min-w-0 flex-col gap-4">
 						<div>
 							<h2 class="text-sm font-semibold">Cari & Filter Surat</h2>
-							<p class="mt-1 text-xs leading-5 text-muted-foreground">
-								Temukan surat berdasarkan nomor, pengirim, perihal, kategori, sifat, status, unit kerja, atau tanggal diterima.
-							</p>
+							<p class="mt-1 text-xs leading-5 text-muted-foreground">Temukan surat berdasarkan nomor, pengirim, perihal, kategori, sifat, status, unit kerja, atau tanggal diterima.</p>
 						</div>
 
 						<div class="relative min-w-0">
 							<Search class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
-							<Input
-								bind:value={search}
-								placeholder="Cari nomor surat, pengirim, perihal, atau unit kerja..."
-								class="h-11 w-full rounded-lg pl-10 text-sm transition-shadow focus:shadow-sm"
-								oninput={()=>currentPage=1}
-							/>
+							<Input bind:value={search} placeholder="Cari nomor surat, pengirim, perihal, atau unit kerja..." class="h-11 w-full rounded-lg pl-10 text-sm transition-shadow focus:shadow-sm" oninput={()=>currentPage=1}/>
 						</div>
 
 						<div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(150px,.8fr)_minmax(170px,.9fr)_minmax(170px,.85fr)_40px]">
 							<div class="relative min-w-0">
 								<SlidersHorizontal class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
-								<select
-									bind:value={categoryFilter}
-									onchange={()=>currentPage=1}
-									class="h-10 w-full min-w-0 rounded-lg border border-input bg-background pl-10 pr-8 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
-								>
+								<select bind:value={categoryFilter} onchange={()=>currentPage=1} class="h-10 w-full min-w-0 rounded-lg border border-input bg-background pl-10 pr-8 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20">
 									<option value="ALL">Semua Kategori</option>
 									{#each categories as option}
 										<option value={option.value}>{option.label}</option>
@@ -418,44 +333,25 @@
 								</select>
 							</div>
 
-							<select
-								bind:value={priorityFilter}
-								onchange={()=>currentPage=1}
-								class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
-							>
+							<select bind:value={priorityFilter} onchange={()=>currentPage=1} class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20">
 								<option value="ALL">Semua Sifat</option>
 								{#each priorities as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
 
-							<select
-								bind:value={statusFilter}
-								onchange={()=>currentPage=1}
-								class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
-							>
+							<select bind:value={statusFilter} onchange={()=>currentPage=1} class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20">
 								<option value="ALL">Semua Status</option>
 								{#each INCOMING_MAIL_STATUS_OPTIONS as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
 
-							<Input
-								type="date"
-								bind:value={dateFilter}
-								onchange={()=>currentPage=1}
-								class="h-10 w-full min-w-0 rounded-lg text-xs"
-							/>
+							<Input type="date" bind:value={dateFilter} onchange={()=>currentPage=1} class="h-10 w-full min-w-0 rounded-lg text-xs"/>
 
 							<div class="flex">
 								{#if hasFilter}
-									<Button
-										type="button"
-										variant="outline"
-										size="icon"
-										class="size-10 rounded-lg transition-all duration-200 hover:-rotate-12"
-										onclick={resetFilter}
-									>
+									<Button type="button" variant="outline" size="icon" class="size-10 rounded-lg transition-all duration-200 hover:-rotate-12" onclick={resetFilter}>
 										<RotateCcw class="size-4"/>
 									</Button>
 								{:else}
@@ -474,13 +370,9 @@
 					<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 						<div class="min-w-0">
 							<Card.Title class="text-base font-semibold">Daftar Surat Masuk</Card.Title>
-							<Card.Description class="mt-1.5 max-w-2xl text-xs leading-5">
-								Menampilkan seluruh surat yang telah diterima beserta informasi pengirim, klasifikasi, sifat surat, status pemrosesan, dan unit kerja tujuan.
-							</Card.Description>
+							<Card.Description class="mt-1.5 max-w-2xl text-xs leading-5">Menampilkan seluruh surat yang telah diterima beserta informasi pengirim, klasifikasi, sifat surat, status pemrosesan, dan unit kerja tujuan.</Card.Description>
 						</div>
-						<div class="w-fit shrink-0 rounded-md bg-muted px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-							{filteredRecords.length} data
-						</div>
+						<div class="w-fit shrink-0 rounded-md bg-muted px-3 py-1.5 text-[11px] font-medium text-muted-foreground">{filteredRecords.length} data</div>
 					</div>
 				</Card.Header>
 
@@ -537,9 +429,7 @@
 					<TriangleAlert class="size-5"/>
 				</div>
 				<h2 class="mt-4 text-lg font-bold">Hapus surat masuk?</h2>
-				<p class="mt-1 text-sm leading-6 text-muted-foreground">
-					Data surat akan dihapus dari database dan tidak lagi ditampilkan pada halaman Surat Masuk.
-				</p>
+				<p class="mt-1 text-sm leading-6 text-muted-foreground">Data surat akan dihapus dari database dan tidak lagi ditampilkan pada halaman Surat Masuk.</p>
 				<div class="mt-4 rounded-lg border bg-muted/40 p-3.5">
 					<p class="font-mono text-xs font-semibold text-blue-600">{deleteTarget.agendaNumber}</p>
 					<p class="mt-1.5 text-sm font-medium leading-5">{deleteTarget.subject}</p>
@@ -547,20 +437,8 @@
 			</div>
 
 			<div class="flex justify-end gap-2 border-t p-4">
-				<Button
-					type="button"
-					variant="outline"
-					class="rounded-lg"
-					onclick={()=>deleteTarget=null}
-				>
-					Batal
-				</Button>
-				<Button
-					type="button"
-					variant="destructive"
-					class="rounded-lg"
-					onclick={confirmDelete}
-				>
+				<Button type="button" variant="outline" class="rounded-lg" onclick={()=>deleteTarget=null}>Batal</Button>
+				<Button type="button" variant="destructive" class="rounded-lg" onclick={confirmDelete}>
 					<Trash2 class="size-4"/>
 					Hapus
 				</Button>
@@ -570,18 +448,11 @@
 {/if}
 
 {#if notification}
-	<div
-		class="fixed bottom-5 right-5 z-[300] flex w-[calc(100%-40px)] max-w-sm items-start gap-3 rounded-xl border bg-background p-4 shadow-xl"
-		in:fly={{x:30,duration:250}}
-	>
-		<div
-			class={[
-				'flex size-9 shrink-0 items-center justify-center rounded-full',
-				notification.type==='success'
-					?'bg-emerald-50 text-emerald-600'
-					:'bg-amber-50 text-amber-600'
-			]}
-		>
+	<div class="fixed bottom-5 right-5 z-[300] flex w-[calc(100%-40px)] max-w-sm items-start gap-3 rounded-xl border bg-background p-4 shadow-xl" in:fly={{x:30,duration:250}}>
+		<div class={[
+			'flex size-9 shrink-0 items-center justify-center rounded-full',
+			notification.type==='success'?'bg-emerald-50 text-emerald-600':'bg-amber-50 text-amber-600'
+		]}>
 			{#if notification.type==='success'}
 				<CircleCheck class="size-4"/>
 			{:else}
@@ -591,16 +462,10 @@
 
 		<div class="min-w-0 flex-1">
 			<p class="text-xs font-semibold">Informasi</p>
-			<p class="mt-1 text-xs leading-5 text-muted-foreground">
-				{notification.message}
-			</p>
+			<p class="mt-1 text-xs leading-5 text-muted-foreground">{notification.message}</p>
 		</div>
 
-		<button
-			type="button"
-			class="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-			onclick={()=>notification=null}
-		>
+		<button type="button" class="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground" onclick={()=>notification=null}>
 			<X class="size-4"/>
 		</button>
 	</div>

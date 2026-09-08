@@ -15,8 +15,8 @@
 	let{open=false,onClose=()=>{}}:Props=$props();
 	let incomingMailCount=$state<number|null>(null);
 
-	onMount(async()=>{
-		await loadIncomingMailCount();
+	onMount(()=>{
+		void loadIncomingMailCount();
 	});
 
 	async function loadIncomingMailCount(){
@@ -64,6 +64,7 @@
 		{#each navigationGroups as group}
 			<div class="nav-group">
 				<p class="group-title">{group.label}</p>
+
 				<div class="nav-items">
 					{#each group.items as item}
 						<a
@@ -77,10 +78,14 @@
 
 							{#if item.href==='/surat-masuk'}
 								{#if incomingMailCount!==null}
-									<span class="nav-badge">{incomingMailCount}</span>
+									<span class="nav-badge">
+										{incomingMailCount}
+									</span>
 								{/if}
-							{:else if item.badge}
-								<span class="nav-badge">{item.badge}</span>
+							{:else if 'badge' in item&&item.badge}
+								<span class="nav-badge">
+									{item.badge}
+								</span>
 							{/if}
 						</a>
 					{/each}
@@ -91,10 +96,12 @@
 
 	<div class="sidebar-user">
 		<div class="user-avatar">SA</div>
+
 		<div class="user-copy">
 			<strong>Super Administrator</strong>
 			<span>admin@sipersurat.id</span>
 		</div>
+
 		<ChevronDown class="size-3.5 text-[#737373]"/>
 	</div>
 </aside>

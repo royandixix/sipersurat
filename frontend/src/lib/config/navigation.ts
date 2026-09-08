@@ -13,67 +13,26 @@ export const navigationGroups=[
 	{
 		label:'General',
 		items:[
-			{
-				label:'Dashboard',
-				href:'/dashboard',
-				icon:LayoutDashboard
-			},
-			{
-				label:'Surat Masuk',
-				href:'/surat-masuk',
-				icon:Inbox
-			},
-			{
-				label:'Surat Keluar',
-				href:'/surat-keluar',
-				icon:Send
-			},
-			{
-				label:'Disposisi',
-				href:'/disposisi',
-				icon:Forward,
-				badge:5
-			},
-			{
-				label:'Arsip',
-				href:'/arsip',
-				icon:Archive
-			},
-			{
-				label:'Pengguna',
-				href:'/pengguna',
-				icon:UsersRound
-			}
+			{label:'Dashboard',href:'/dashboard',icon:LayoutDashboard},
+			{label:'Surat Masuk',href:'/surat-masuk',icon:Inbox},
+			{label:'Surat Keluar',href:'/surat-keluar',icon:Send},
+			{label:'Disposisi',href:'/disposisi',icon:Forward},
+			{label:'Arsip',href:'/arsip',icon:Archive},
+			{label:'Pengguna',href:'/pengguna',icon:UsersRound}
 		]
 	},
 	{
 		label:'Pages',
 		items:[
-			{
-				label:'Master Data',
-				href:'/master-data',
-				icon:Boxes
-			},
-			{
-				label:'Laporan',
-				href:'/laporan',
-				icon:ChartNoAxesCombined
-			}
+			{label:'Master Data',href:'/master-data',icon:Boxes},
+			{label:'Laporan',href:'/laporan',icon:ChartNoAxesCombined}
 		]
 	},
 	{
 		label:'Other',
 		items:[
-			{
-				label:'Pengaturan',
-				href:'/pengaturan',
-				icon:Settings2
-			},
-			{
-				label:'Pusat Bantuan',
-				href:'/bantuan',
-				icon:CircleHelp
-			}
+			{label:'Pengaturan',href:'/pengaturan',icon:Settings2},
+			{label:'Pusat Bantuan',href:'/bantuan',icon:CircleHelp}
 		]
 	}
 ];
