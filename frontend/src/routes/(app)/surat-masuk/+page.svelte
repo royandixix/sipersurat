@@ -22,31 +22,18 @@
 	import type{MasterDataRecord}from'$lib/features/master-data/types';
 	import type{IncomingMailPayload,IncomingMailRecord,IncomingMailStatus}from'$lib/features/surat-masuk/types';
 	import{INCOMING_MAIL_STATUS_OPTIONS}from'$lib/features/surat-masuk/types';
+	import{createIncomingMail,deleteIncomingMail,getIncomingMails,updateIncomingMail,updateIncomingMailStatus}from'$lib/features/surat-masuk/api';
 
-	const STORAGE_KEY='sipersurat-incoming-mail';
 	const MASTER_STORAGE_KEY='sipersurat-master-data';
 	const perPage=6;
-
-	const defaultRecords:IncomingMailRecord[]=[
-		{id:1,agendaNumber:'SM-2026-0001',letterNumber:'005/UND/VIII/2026',letterDate:'2026-08-12',receivedDate:'2026-08-13',sender:'Dinas Pendidikan Kabupaten',subject:'Undangan Rapat Koordinasi Program Kerja Tahun 2026',category:'Undangan',priority:'Penting',targetUnit:'Tata Usaha',notes:'Mohon diteruskan kepada pimpinan untuk disposisi.',status:'PENDING_DISPOSITION',fileName:'undangan-rapat-koordinasi.pdf',fileType:'application/pdf',fileSize:428000,createdAt:'13 Agu 2026, 08:35',updatedAt:'13 Agu 2026, 08:35'},
-		{id:2,agendaNumber:'SM-2026-0002',letterNumber:'117/DPK/VIII/2026',letterDate:'2026-08-11',receivedDate:'2026-08-13',sender:'Dinas Pekerjaan Umum',subject:'Permohonan Data Pendukung Kegiatan Infrastruktur',category:'Permohonan',priority:'Biasa',targetUnit:'Sekretariat',notes:'',status:'RECEIVED',fileName:'permohonan-data.pdf',fileType:'application/pdf',fileSize:312000,createdAt:'13 Agu 2026, 09:05',updatedAt:'13 Agu 2026, 09:05'},
-		{id:3,agendaNumber:'SM-2026-0003',letterNumber:'021/BPKAD/VIII/2026',letterDate:'2026-08-10',receivedDate:'2026-08-12',sender:'BPKAD',subject:'Pemberitahuan Rekonsiliasi Laporan Keuangan Semester I',category:'Pemberitahuan',priority:'Penting',targetUnit:'Keuangan',notes:'Jadwal rekonsiliasi terlampir.',status:'DISPOSITIONED',fileName:'rekonsiliasi-keuangan.pdf',fileType:'application/pdf',fileSize:516000,createdAt:'12 Agu 2026, 10:20',updatedAt:'12 Agu 2026, 13:10'},
-		{id:4,agendaNumber:'SM-2026-0004',letterNumber:'045/SET/VIII/2026',letterDate:'2026-08-09',receivedDate:'2026-08-12',sender:'Sekretariat Daerah',subject:'Penyampaian Jadwal Evaluasi Kinerja Perangkat Daerah',category:'Pemberitahuan',priority:'Biasa',targetUnit:'Pimpinan',notes:'',status:'IN_PROGRESS',fileName:'jadwal-evaluasi.pdf',fileType:'application/pdf',fileSize:287000,createdAt:'12 Agu 2026, 11:40',updatedAt:'13 Agu 2026, 08:10'},
-		{id:5,agendaNumber:'SM-2026-0005',letterNumber:'088/INS/VIII/2026',letterDate:'2026-08-08',receivedDate:'2026-08-11',sender:'Inspektorat Daerah',subject:'Permintaan Dokumen Tindak Lanjut Hasil Pemeriksaan',category:'Permohonan',priority:'Rahasia',targetUnit:'Pimpinan',notes:'Dokumen bersifat terbatas.',status:'COMPLETED',fileName:'permintaan-dokumen.pdf',fileType:'application/pdf',fileSize:624000,createdAt:'11 Agu 2026, 09:15',updatedAt:'12 Agu 2026, 16:30'},
-		{id:6,agendaNumber:'SM-2026-0006',letterNumber:'031/BKD/VIII/2026',letterDate:'2026-08-07',receivedDate:'2026-08-11',sender:'Badan Kepegawaian Daerah',subject:'Undangan Sosialisasi Sistem Informasi Kepegawaian',category:'Undangan',priority:'Biasa',targetUnit:'Kepegawaian',notes:'',status:'ARCHIVED',fileName:'sosialisasi-simpeg.pdf',fileType:'application/pdf',fileSize:352000,createdAt:'11 Agu 2026, 10:25',updatedAt:'12 Agu 2026, 15:15'},
-		{id:7,agendaNumber:'SM-2026-0007',letterNumber:'145/DINKES/VIII/2026',letterDate:'2026-08-12',receivedDate:'2026-08-13',sender:'Dinas Kesehatan',subject:'Pemberitahuan Pelaksanaan Pemeriksaan Kesehatan Berkala',category:'Pemberitahuan',priority:'Biasa',targetUnit:'Umum',notes:'',status:'PENDING_DISPOSITION',fileName:'pemeriksaan-kesehatan.pdf',fileType:'application/pdf',fileSize:405000,createdAt:'13 Agu 2026, 10:10',updatedAt:'13 Agu 2026, 10:10'},
-		{id:8,agendaNumber:'SM-2026-0008',letterNumber:'072/KPU/VIII/2026',letterDate:'2026-08-12',receivedDate:'2026-08-13',sender:'Komisi Pemilihan Umum',subject:'Permohonan Fasilitasi Ruang Pertemuan Koordinasi',category:'Permohonan',priority:'Penting',targetUnit:'Umum',notes:'',status:'RECEIVED',fileName:'permohonan-fasilitas.pdf',fileType:'application/pdf',fileSize:298000,createdAt:'13 Agu 2026, 10:45',updatedAt:'13 Agu 2026, 10:45'},
-		{id:9,agendaNumber:'SM-2026-0009',letterNumber:'014/PRO/VIII/2026',letterDate:'2026-08-12',receivedDate:'2026-08-13',sender:'Bagian Protokol',subject:'Undangan Rapat Persiapan Kegiatan Kenegaraan',category:'Internal',priority:'Sangat Rahasia',targetUnit:'Pimpinan',notes:'Distribusi dokumen dibatasi.',status:'PENDING_DISPOSITION',fileName:'undangan-protokol.pdf',fileType:'application/pdf',fileSize:551000,createdAt:'13 Agu 2026, 11:05',updatedAt:'13 Agu 2026, 11:05'}
-	];
-
 	const fallbackCategories=['Undangan','Permohonan','Pemberitahuan','Internal','Eksternal'];
 	const fallbackPriorities=['Biasa','Penting','Rahasia','Sangat Rahasia'];
 	const fallbackUnits=['Administrator','Tata Usaha','Pimpinan','Sekretariat','Keuangan','Umum','Kepegawaian'];
 
-	let records=$state<IncomingMailRecord[]>([...defaultRecords]);
+	let records=$state<IncomingMailRecord[]>([]);
 	let masterData=$state<MasterDataRecord[]>([]);
-	let initialized=$state(false);
-	let search=$state('');
+	
+	let seatch=$state('');
 	let categoryFilter=$state('ALL');
 	let priorityFilter=$state('ALL');
 	let statusFilter=$state<'ALL'|IncomingMailStatus>('ALL');
@@ -61,44 +48,16 @@
 	let notification=$state<{type:'success'|'info';message:string}|null>(null);
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		const saved=localStorage.getItem(STORAGE_KEY);
-
-		if(saved){
-			try{
-				const parsed=JSON.parse(saved);
-				if(Array.isArray(parsed))records=parsed;
-			}catch{
-				records=[...defaultRecords];
-			}
-		}
-
-		const savedMaster=localStorage.getItem(MASTER_STORAGE_KEY);
-
-		if(savedMaster){
-			try{
-				const parsed=JSON.parse(savedMaster);
-				if(Array.isArray(parsed))masterData=parsed;
-			}catch{
-				masterData=[];
-			}
-		}
-
-		initialized=true;
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-		localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+		loadMasterData();
+		await loadRecords();
 	});
 
 	const categories=$derived.by(()=>{
 		const items=masterData
 			.filter((item)=>item.type==='KATEGORI_SURAT'&&item.status==='ACTIVE')
 			.map((item)=>item.name);
-
 		return(items.length?items:fallbackCategories).map((value)=>({
 			value,
 			label:value
@@ -109,18 +68,18 @@
 		const items=masterData
 			.filter((item)=>item.type==='SIFAT_SURAT'&&item.status==='ACTIVE')
 			.map((item)=>item.name);
-
 		return(items.length?items:fallbackPriorities).map((value)=>({
 			value,
 			label:value
 		}));
 	});
 
+	
+
 	const units=$derived.by(()=>{
 		const items=masterData
 			.filter((item)=>item.type==='UNIT_KERJA'&&item.status==='ACTIVE')
 			.map((item)=>item.name);
-
 		return(items.length?items:fallbackUnits).map((value)=>({
 			value,
 			label:value
@@ -129,7 +88,6 @@
 
 	const filteredRecords=$derived(records.filter((record)=>{
 		const keyword=search.trim().toLowerCase();
-
 		const matchesSearch=
 			!keyword||
 			record.agendaNumber.toLowerCase().includes(keyword)||
@@ -137,12 +95,11 @@
 			record.sender.toLowerCase().includes(keyword)||
 			record.subject.toLowerCase().includes(keyword)||
 			record.targetUnit.toLowerCase().includes(keyword);
-
 		const matchesCategory=categoryFilter==='ALL'||record.category===categoryFilter;
 		const matchesPriority=priorityFilter==='ALL'||record.priority===priorityFilter;
 		const matchesStatus=statusFilter==='ALL'||record.status===statusFilter;
 		const matchesDate=!dateFilter||record.receivedDate===dateFilter;
-
+		const matchesDate= !dateFilter || record.receivedDate === dateFilter; 
 		return matchesSearch&&matchesCategory&&matchesPriority&&matchesStatus&&matchesDate;
 	}));
 
@@ -180,35 +137,47 @@
 		if(currentPage>totalPages)currentPage=totalPages;
 	});
 
+	function loadMasterData(){
+		const saved=localStorage.getItem(MASTER_STORAGE_KEY);
+		if(!saved)return;
+		try{
+			const parsed=JSON.parse(saved);
+			if(Array.isArray(parsed))masterData=parsed;
+		}catch{
+			masterData=[];
+		}
+	}
+
+	async function loadRecords(){
+		try{
+			records=await getIncomingMails();
+		}catch(error){
+			records=[];
+			notify(
+				getErrorMessage(error,'Data surat masuk gagal dimuat.'),
+				'info'
+			);
+		}
+	}
+
 	function generateAgendaNumber(items:IncomingMailRecord[]){
 		const year=new Date().getFullYear();
-
 		const max=items.reduce((highest,item)=>{
 			const match=item.agendaNumber.match(/^SM-(\d{4})-(\d+)$/);
-
 			if(!match||Number(match[1])!==year)return highest;
-
 			return Math.max(highest,Number(match[2]));
 		},0);
-
 		return`SM-${year}-${String(max+1).padStart(4,'0')}`;
 	}
 
-	function timestamp(){
-		return new Intl.DateTimeFormat('id-ID',{
-			day:'2-digit',
-			month:'short',
-			year:'numeric',
-			hour:'2-digit',
-			minute:'2-digit'
-		}).format(new Date()).replace(' pukul ',', ');
+	function getErrorMessage(error:unknown,fallback:string){
+		if(error instanceof Error&&error.message)return error.message;
+		return fallback;
 	}
 
 	function notify(message:string,type:'success'|'info'='success'){
 		notification={type,message};
-
 		if(notificationTimer)clearTimeout(notificationTimer);
-
 		notificationTimer=setTimeout(()=>{
 			notification=null;
 		},3000);
@@ -233,92 +202,79 @@
 		detailOpen=true;
 	}
 
-	function saveRecord(payload:IncomingMailPayload){
-		const duplicate=records.some((record)=>
-			record.id!==selectedRecord?.id&&
-			record.letterNumber.toLowerCase()===payload.letterNumber.toLowerCase()
-		);
-
-		if(duplicate){
-			notify('Nomor surat tersebut sudah terdaftar.','info');
-			return;
-		}
-
-		const now=timestamp();
-
-		if(formMode==='create'){
-			const nextId=Math.max(0,...records.map((record)=>record.id))+1;
-
-			records=[
-				{
-					id:nextId,
-					agendaNumber:nextAgendaNumber,
-					...payload,
-					createdAt:now,
-					updatedAt:now
-				},
-				...records
-			];
-
-			notify('Surat masuk berhasil ditambahkan.');
-		}else if(selectedRecord){
-			const id=selectedRecord.id;
-
-			records=records.map((record)=>
-				record.id===id
-					?{...record,...payload,updatedAt:now}
-					:record
-			);
-
-			if(detailRecord?.id===id){
-				detailRecord=records.find((record)=>record.id===id)??null;
+	async function saveRecord(payload:IncomingMailPayload){
+		try{
+			if(formMode==='create'){
+				const saved=await createIncomingMail(payload);
+				records=[saved,...records];
+				notify('Surat masuk berhasil ditambahkan.');
+			}else if(selectedRecord){
+				const saved=await updateIncomingMail(selectedRecord.id,payload);
+				records=records.map((record)=>
+					record.id===saved.id?saved:record
+				);
+				if(detailRecord?.id===saved.id){
+					detailRecord=saved;
+				}
+				notify('Surat masuk berhasil diperbarui.');
 			}
-
-			notify('Surat masuk berhasil diperbarui.');
+			formOpen=false;
+			selectedRecord=null;
+			currentPage=1;
+		}catch(error){
+			notify(
+				getErrorMessage(error,'Surat masuk gagal disimpan.'),
+				'info'
+			);
 		}
-
-		formOpen=false;
-		selectedRecord=null;
-		currentPage=1;
 	}
 
-	function changeStatus(record:IncomingMailRecord,status:IncomingMailStatus){
-		records=records.map((item)=>
-			item.id===record.id
-				?{...item,status,updatedAt:timestamp()}
-				:item
-		);
-
-		detailRecord=records.find((item)=>item.id===record.id)??null;
-
-		if(status==='ARCHIVED'){
-			notify('Surat berhasil diarsipkan.');
-		}else if(status==='COMPLETED'){
-			notify('Surat ditandai selesai.');
-		}else{
-			notify('Status surat berhasil diperbarui.');
+	async function changeStatus(record:IncomingMailRecord,status:IncomingMailStatus){
+		try{
+			const saved=await updateIncomingMailStatus(record.id,status);
+			records=records.map((item)=>
+				item.id===saved.id?saved:item
+			);
+			if(detailRecord?.id===saved.id){
+				detailRecord=saved;
+			}
+			if(status==='ARCHIVED'){
+				notify('Surat berhasil diarsipkan.');
+			}else if(status==='COMPLETED'){
+				notify('Surat ditandai selesai.');
+			}else{
+				notify('Status surat berhasil diperbarui.');
+			}
+		}catch(error){
+			notify(
+				getErrorMessage(error,'Status surat gagal diperbarui.'),
+				'info'
+			);
 		}
 	}
 
 	function archiveRecord(record:IncomingMailRecord){
-		changeStatus(record,'ARCHIVED');
+		void changeStatus(record,'ARCHIVED');
 	}
 
-	function confirmDelete(){
+	async function confirmDelete(){
 		if(!deleteTarget)return;
-
-		const id=deleteTarget.id;
-
-		records=records.filter((record)=>record.id!==id);
-
-		if(detailRecord?.id===id){
-			detailOpen=false;
-			detailRecord=null;
+		const target=deleteTarget;
+		try{
+			await deleteIncomingMail(target.id);
+			records=records.filter((record)=>record.id!==target.id);
+			if(detailRecord?.id===target.id){
+				detailOpen=false;
+				detailRecord=null;
+			}
+			deleteTarget=null;
+			notify('Surat masuk berhasil dihapus.');
+		}catch(error){
+			notify(
+				getErrorMessage(error,'Surat masuk gagal dihapus.'),
+				'info'
+			);
 		}
-
-		deleteTarget=null;
-
-		notify('Surat masuk berhasil dihapus.');
 	}
 
 	function resetFilter(){
@@ -338,23 +294,13 @@
 <div class="w-full min-w-0 overflow-x-hidden">
 	<div class="mx-auto w-full min-w-0 max-w-[1500px] px-5 py-7 md:px-8 lg:px-10">
 		<div class="flex flex-col justify-between gap-6 md:flex-row md:items-start">
-			<div
-				class="min-w-0"
-				in:fly={{y:18,duration:450}}
-			>
-				<h1 class="text-2xl font-bold tracking-tight md:text-[28px]">
-					Surat Masuk
-				</h1>
-
+			<div class="min-w-0" in:fly={{y:18,duration:450}}>
+				<h1 class="text-2xl font-bold tracking-tight md:text-[28px]">Surat Masuk</h1>
 				<p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
 					Kelola pencatatan, klasifikasi, dokumen, dan proses tindak lanjut seluruh surat yang diterima oleh instansi secara terpusat. Pantau status surat mulai dari diterima, menunggu disposisi, diproses, hingga selesai dan diarsipkan.
 				</p>
 			</div>
-
-			<div
-				class="shrink-0"
-				in:fly={{y:14,duration:420,delay:100}}
-			>
+			<div class="shrink-0" in:fly={{y:14,duration:420,delay:100}}>
 				<Button
 					type="button"
 					class="h-10 w-full rounded-lg px-4 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md md:w-auto"
@@ -371,19 +317,12 @@
 				<Card.Root class="group h-full min-w-0 rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-md">
 					<Card.Content class="p-5">
 						<div class="flex items-center justify-between gap-4">
-							<p class="text-xs font-semibold">
-								Total Surat
-							</p>
-
+							<p class="text-xs font-semibold">Total Surat</p>
 							<div class="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-all duration-200 group-hover:bg-foreground group-hover:text-background">
 								<Inbox class="size-4"/>
 							</div>
 						</div>
-
-						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">
-							{records.length}
-						</p>
-
+						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{records.length}</p>
 						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
 							Seluruh surat masuk yang telah tercatat pada sistem.
 						</p>
@@ -395,19 +334,12 @@
 				<Card.Root class="group h-full min-w-0 rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-md">
 					<Card.Content class="p-5">
 						<div class="flex items-center justify-between gap-4">
-							<p class="text-xs font-semibold">
-								Hari Ini
-							</p>
-
+							<p class="text-xs font-semibold">Hari Ini</p>
 							<div class="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all duration-200 group-hover:scale-110">
 								<CalendarCheck class="size-4"/>
 							</div>
 						</div>
-
-						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">
-							{todayCount}
-						</p>
-
+						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{todayCount}</p>
 						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
 							Surat baru yang diterima dan dicatat pada hari ini.
 						</p>
@@ -419,19 +351,12 @@
 				<Card.Root class="group h-full min-w-0 rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-md">
 					<Card.Content class="p-5">
 						<div class="flex items-center justify-between gap-4">
-							<p class="text-xs font-semibold">
-								Perlu Disposisi
-							</p>
-
+							<p class="text-xs font-semibold">Perlu Disposisi</p>
 							<div class="flex size-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition-all duration-200 group-hover:scale-110">
 								<Forward class="size-4"/>
 							</div>
 						</div>
-
-						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">
-							{pendingCount}
-						</p>
-
+						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{pendingCount}</p>
 						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
 							Surat yang masih menunggu arahan atau disposisi pimpinan.
 						</p>
@@ -443,19 +368,12 @@
 				<Card.Root class="group h-full min-w-0 rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-md">
 					<Card.Content class="p-5">
 						<div class="flex items-center justify-between gap-4">
-							<p class="text-xs font-semibold">
-								Selesai
-							</p>
-
+							<p class="text-xs font-semibold">Selesai</p>
 							<div class="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-all duration-200 group-hover:scale-110">
 								<CircleCheck class="size-4"/>
 							</div>
 						</div>
-
-						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">
-							{completedCount}
-						</p>
-
+						<p class="mt-7 text-[28px] font-bold leading-none tracking-tight">{completedCount}</p>
 						<p class="mt-2 text-[11px] leading-5 text-muted-foreground">
 							Surat yang proses tindak lanjutnya telah selesai atau diarsipkan.
 						</p>
@@ -469,10 +387,7 @@
 				<Card.Content class="p-5">
 					<div class="flex min-w-0 flex-col gap-4">
 						<div>
-							<h2 class="text-sm font-semibold">
-								Cari & Filter Surat
-							</h2>
-
+							<h2 class="text-sm font-semibold">Cari & Filter Surat</h2>
 							<p class="mt-1 text-xs leading-5 text-muted-foreground">
 								Temukan surat berdasarkan nomor, pengirim, perihal, kategori, sifat, status, unit kerja, atau tanggal diterima.
 							</p>
@@ -480,7 +395,6 @@
 
 						<div class="relative min-w-0">
 							<Search class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
-
 							<Input
 								bind:value={search}
 								placeholder="Cari nomor surat, pengirim, perihal, atau unit kerja..."
@@ -492,20 +406,14 @@
 						<div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(150px,.8fr)_minmax(170px,.9fr)_minmax(170px,.85fr)_40px]">
 							<div class="relative min-w-0">
 								<SlidersHorizontal class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
-
 								<select
 									bind:value={categoryFilter}
 									onchange={()=>currentPage=1}
 									class="h-10 w-full min-w-0 rounded-lg border border-input bg-background pl-10 pr-8 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
 								>
-									<option value="ALL">
-										Semua Kategori
-									</option>
-
+									<option value="ALL">Semua Kategori</option>
 									{#each categories as option}
-										<option value={option.value}>
-											{option.label}
-										</option>
+										<option value={option.value}>{option.label}</option>
 									{/each}
 								</select>
 							</div>
@@ -515,14 +423,9 @@
 								onchange={()=>currentPage=1}
 								class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
 							>
-								<option value="ALL">
-									Semua Sifat
-								</option>
-
+								<option value="ALL">Semua Sifat</option>
 								{#each priorities as option}
-									<option value={option.value}>
-										{option.label}
-									</option>
+									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
 
@@ -531,14 +434,9 @@
 								onchange={()=>currentPage=1}
 								class="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-xs font-medium outline-none transition-all duration-200 hover:border-foreground/30 focus:border-ring focus:ring-2 focus:ring-ring/20"
 							>
-								<option value="ALL">
-									Semua Status
-								</option>
-
+								<option value="ALL">Semua Status</option>
 								{#each INCOMING_MAIL_STATUS_OPTIONS as option}
-									<option value={option.value}>
-										{option.label}
-									</option>
+									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
 
@@ -575,15 +473,11 @@
 				<Card.Header class="border-b px-5 py-5 sm:px-6">
 					<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 						<div class="min-w-0">
-							<Card.Title class="text-base font-semibold">
-								Daftar Surat Masuk
-							</Card.Title>
-
+							<Card.Title class="text-base font-semibold">Daftar Surat Masuk</Card.Title>
 							<Card.Description class="mt-1.5 max-w-2xl text-xs leading-5">
 								Menampilkan seluruh surat yang telah diterima beserta informasi pengirim, klasifikasi, sifat surat, status pemrosesan, dan unit kerja tujuan.
 							</Card.Description>
 						</div>
-
 						<div class="w-fit shrink-0 rounded-md bg-muted px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
 							{filteredRecords.length} data
 						</div>
@@ -637,31 +531,18 @@
 
 {#if deleteTarget}
 	<div class="fixed inset-0 z-[250] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-		<div
-			class="w-full max-w-md overflow-hidden rounded-xl border bg-background shadow-2xl"
-			in:fly={{y:15,duration:220}}
-		>
+		<div class="w-full max-w-md overflow-hidden rounded-xl border bg-background shadow-2xl" in:fly={{y:15,duration:220}}>
 			<div class="p-5">
 				<div class="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-600">
 					<TriangleAlert class="size-5"/>
 				</div>
-
-				<h2 class="mt-4 text-lg font-bold">
-					Hapus surat masuk?
-				</h2>
-
+				<h2 class="mt-4 text-lg font-bold">Hapus surat masuk?</h2>
 				<p class="mt-1 text-sm leading-6 text-muted-foreground">
-					Data surat akan dihapus dari daftar Surat Masuk dan tidak lagi ditampilkan pada halaman ini.
+					Data surat akan dihapus dari database dan tidak lagi ditampilkan pada halaman Surat Masuk.
 				</p>
-
 				<div class="mt-4 rounded-lg border bg-muted/40 p-3.5">
-					<p class="font-mono text-xs font-semibold text-blue-600">
-						{deleteTarget.agendaNumber}
-					</p>
-
-					<p class="mt-1.5 text-sm font-medium leading-5">
-						{deleteTarget.subject}
-					</p>
+					<p class="font-mono text-xs font-semibold text-blue-600">{deleteTarget.agendaNumber}</p>
+					<p class="mt-1.5 text-sm font-medium leading-5">{deleteTarget.subject}</p>
 				</div>
 			</div>
 
@@ -674,7 +555,6 @@
 				>
 					Batal
 				</Button>
-
 				<Button
 					type="button"
 					variant="destructive"
@@ -710,10 +590,7 @@
 		</div>
 
 		<div class="min-w-0 flex-1">
-			<p class="text-xs font-semibold">
-				Informasi
-			</p>
-
+			<p class="text-xs font-semibold">Informasi</p>
 			<p class="mt-1 text-xs leading-5 text-muted-foreground">
 				{notification.message}
 			</p>
@@ -728,6 +605,7 @@
 		</button>
 	</div>
 {/if}
+
 <style>
 	.page-shell{width:100%;max-width:1600px;margin:0 auto;padding:28px 36px 40px}
 	.page-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}

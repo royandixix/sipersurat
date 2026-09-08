@@ -1,13 +1,13 @@
-import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-import Inbox from '@lucide/svelte/icons/inbox';
-import Send from '@lucide/svelte/icons/send';
-import Forward from '@lucide/svelte/icons/forward';
-import Archive from '@lucide/svelte/icons/archive';
-import UsersRound from '@lucide/svelte/icons/users-round';
-import Boxes from '@lucide/svelte/icons/boxes';
-import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
-import Settings2 from '@lucide/svelte/icons/settings-2';
-import CircleHelp from '@lucide/svelte/icons/circle-help';
+import LayoutDashboard from'@lucide/svelte/icons/layout-dashboard';
+import Inbox from'@lucide/svelte/icons/inbox';
+import Send from'@lucide/svelte/icons/send';
+import Forward from'@lucide/svelte/icons/forward';
+import Archive from'@lucide/svelte/icons/archive';
+import UsersRound from'@lucide/svelte/icons/users-round';
+import Boxes from'@lucide/svelte/icons/boxes';
+import ChartNoAxesCombined from'@lucide/svelte/icons/chart-no-axes-combined';
+import Settings2 from'@lucide/svelte/icons/settings-2';
+import CircleHelp from'@lucide/svelte/icons/circle-help';
 
 export const navigationGroups=[
 	{
@@ -21,8 +21,7 @@ export const navigationGroups=[
 			{
 				label:'Surat Masuk',
 				href:'/surat-masuk',
-				icon:Inbox,
-				badge:12
+				icon:Inbox
 			},
 			{
 				label:'Surat Keluar',

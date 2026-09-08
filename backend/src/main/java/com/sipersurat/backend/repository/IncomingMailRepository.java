@@ -13,4 +13,5 @@ public interface IncomingMailRepository extends JpaRepository<IncomingMail,Long>
     boolean existsByLetterNumberIgnoreCaseAndIdNot(String letterNumber,Long id);
 
     Optional<IncomingMail> findTopByAgendaNumberStartingWithOrderByAgendaNumberDesc(String prefix);
+   
 }

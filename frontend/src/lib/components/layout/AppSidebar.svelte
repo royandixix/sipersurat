@@ -1,9 +1,11 @@
 <script lang="ts">
-	import{page}from '$app/state';
-	import{navigationGroups}from '$lib/config/navigation';
-	import Mail from '@lucide/svelte/icons/mail';
-	import ChevronDown from '@lucide/svelte/icons/chevron-down';
-	import X from '@lucide/svelte/icons/x';
+	import{page}from'$app/state';
+	import{onMount}from'svelte';
+	import{navigationGroups}from'$lib/config/navigation';
+	import{getIncomingMails}from'$lib/features/surat-masuk/api';
+	import Mail from'@lucide/svelte/icons/mail';
+	import ChevronDown from'@lucide/svelte/icons/chevron-down';
+	import X from'@lucide/svelte/icons/x';
 
 	type Props={
 		open?:boolean;
@@ -11,6 +13,21 @@
 	};
 
 	let{open=false,onClose=()=>{}}:Props=$props();
+	let incomingMailCount=$state<number|null>(null);
+
+	onMount(async()=>{
+		await loadIncomingMailCount();
+	});
+
+	async function loadIncomingMailCount(){
+		try{
+			const records=await getIncomingMails();
+			incomingMailCount=records.length;
+		}catch(error){
+			console.error('Gagal memuat jumlah surat masuk:',error);
+			incomingMailCount=null;
+		}
+	}
 
 	function isActive(href:string){
 		return page.url.pathname===href||page.url.pathname.startsWith(`${href}/`);
@@ -18,7 +35,12 @@
 </script>
 
 {#if open}
-	<button type="button" class="sidebar-backdrop" aria-label="Tutup sidebar" onclick={onClose}></button>
+	<button
+		type="button"
+		class="sidebar-backdrop"
+		aria-label="Tutup sidebar"
+		onclick={onClose}
+	></button>
 {/if}
 
 <aside class:mobile-open={open} class="sidebar">
@@ -37,16 +59,27 @@
 			<X class="size-4"/>
 		</button>
 	</div>
+
 	<nav class="navigation">
 		{#each navigationGroups as group}
 			<div class="nav-group">
 				<p class="group-title">{group.label}</p>
 				<div class="nav-items">
 					{#each group.items as item}
-						<a href={item.href} class:active={isActive(item.href)} class="nav-item" onclick={onClose}>
+						<a
+							href={item.href}
+							class:active={isActive(item.href)}
+							class="nav-item"
+							onclick={onClose}
+						>
 							<item.icon class="nav-icon"/>
 							<span class="nav-label">{item.label}</span>
-							{#if item.badge}
+
+							{#if item.href==='/surat-masuk'}
+								{#if incomingMailCount!==null}
+									<span class="nav-badge">{incomingMailCount}</span>
+								{/if}
+							{:else if item.badge}
 								<span class="nav-badge">{item.badge}</span>
 							{/if}
 						</a>
@@ -55,6 +88,7 @@
 			</div>
 		{/each}
 	</nav>
+
 	<div class="sidebar-user">
 		<div class="user-avatar">SA</div>
 		<div class="user-copy">

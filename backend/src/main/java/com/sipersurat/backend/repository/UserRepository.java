@@ -24,7 +24,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRoleAndStatus(UserRole role, UserStatus status);
 
+
     @Query("""
+        SELECT u FROM User u
+        WHERE(
+         search IS NULL OR
+        )
+
             SELECT u FROM User u
             WHERE(
             :search IS NULL OR
