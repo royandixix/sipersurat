@@ -15,6 +15,7 @@
 	import CircleCheck from'@lucide/svelte/icons/circle-check';
 	import TriangleAlert from'@lucide/svelte/icons/triangle-alert';
 	import X from'@lucide/svelte/icons/x';
+	// import Trash2 from'@lucide/svelte/icons/trash-2';
 	import Trash2 from'@lucide/svelte/icons/trash-2';
 
 	import InstitutionSettings from'$lib/features/pengaturan/components/InstitutionSettings.svelte';

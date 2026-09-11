@@ -154,6 +154,11 @@
 		formOpen=true;
 	}
 
+	// function openDetail(record:IncomingMailRecord){
+	// 	detailRecord=record;
+	// 	detailOpen=true;
+	// }
+	
 	function openDetail(record:IncomingMailRecord){
 		detailRecord=record;
 		detailOpen=true;

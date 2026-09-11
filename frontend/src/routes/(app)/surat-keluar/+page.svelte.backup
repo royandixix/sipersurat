@@ -20,120 +20,426 @@
 	import OutgoingMailDetailModal from'$lib/features/surat-keluar/components/OutgoingMailDetailModal.svelte';
 	import OutgoingMailTable from'$lib/features/surat-keluar/components/OutgoingMailTable.svelte';
 	import type{MasterDataRecord}from'$lib/features/master-data/types';
-	import type{OutgoingMailPayload,OutgoingMailRecord,OutgoingMailStatus}from'$lib/features/surat-keluar/types';
-	import{OUTGOING_MAIL_STATUS_OPTIONS}from'$lib/features/surat-keluar/types';
-	import{createOutgoingMail,deleteOutgoingMail,getOutgoingMails,updateOutgoingMail,updateOutgoingMailStatus}from'$lib/features/surat-keluar/api';
+	import type{
+		OutgoingMailPayload,
+		OutgoingMailRecord,
+		OutgoingMailStatus
+	}from'$lib/features/surat-keluar/types';
+	import{
+		OUTGOING_MAIL_STATUS_OPTIONS
+	}from'$lib/features/surat-keluar/types';
 
+	const STORAGE_KEY='sipersurat-outgoing-mail';
 	const MASTER_STORAGE_KEY='sipersurat-master-data';
 	const perPage=6;
-	const fallbackCategories=['Undangan','Permohonan','Pemberitahuan','Internal','Eksternal'];
-	const fallbackPriorities=['Biasa','Penting','Rahasia','Sangat Rahasia'];
-	const fallbackUnits=['Administrator','Tata Usaha','Pimpinan','Sekretariat','Keuangan','Kepegawaian','Umum'];
 
-	let records=$state<OutgoingMailRecord[]>([]);
+	const fallbackCategories=[
+		'Undangan',
+		'Permohonan',
+		'Pemberitahuan',
+		'Internal',
+		'Eksternal'
+	];
+
+	const fallbackPriorities=[
+		'Biasa',
+		'Penting',
+		'Rahasia',
+		'Sangat Rahasia'
+	];
+
+	const fallbackUnits=[
+		'Administrator',
+		'Tata Usaha',
+		'Pimpinan',
+		'Sekretariat',
+		'Keuangan',
+		'Kepegawaian',
+		'Umum'
+	];
+
+	const defaultRecords:OutgoingMailRecord[]=[
+		{
+			id:1,
+			agendaNumber:'SK-2026-0001',
+			letterNumber:'001/SK/VIII/2026',
+			letterDate:'2026-08-13',
+			recipient:'Dinas Pendidikan Kabupaten',
+			subject:'Penyampaian Hasil Koordinasi Program Kerja Tahun 2026',
+			category:'Pemberitahuan',
+			priority:'Biasa',
+			sourceUnit:'Tata Usaha',
+			signer:'Kepala Administrasi',
+			notes:'',
+			status:'SENT',
+			sentDate:'2026-08-13',
+			fileName:'hasil-koordinasi.pdf',
+			fileType:'application/pdf',
+			fileSize:415000,
+			createdAt:'2026-08-13T08:10:00',
+			updatedAt:'2026-08-13T10:30:00'
+		},
+		{
+			id:2,
+			agendaNumber:'SK-2026-0002',
+			letterNumber:'002/SK/VIII/2026',
+			letterDate:'2026-08-13',
+			recipient:'BPKAD',
+			subject:'Permohonan Data Rekonsiliasi Keuangan Semester I',
+			category:'Permohonan',
+			priority:'Penting',
+			sourceUnit:'Keuangan',
+			signer:'Kepala Bagian Keuangan',
+			notes:'Menunggu persetujuan pimpinan.',
+			status:'PENDING_APPROVAL',
+			sentDate:'',
+			fileName:'permohonan-rekonsiliasi.pdf',
+			fileType:'application/pdf',
+			fileSize:368000,
+			createdAt:'2026-08-13T09:20:00',
+			updatedAt:'2026-08-13T09:20:00'
+		},
+		{
+			id:3,
+			agendaNumber:'SK-2026-0003',
+			letterNumber:'003/SK/VIII/2026',
+			letterDate:'2026-08-12',
+			recipient:'Sekretariat Daerah',
+			subject:'Konfirmasi Kehadiran Evaluasi Kinerja Perangkat Daerah',
+			category:'Eksternal',
+			priority:'Biasa',
+			sourceUnit:'Sekretariat',
+			signer:'Sekretaris',
+			notes:'',
+			status:'APPROVED',
+			sentDate:'',
+			fileName:'konfirmasi-kehadiran.pdf',
+			fileType:'application/pdf',
+			fileSize:298000,
+			createdAt:'2026-08-12T11:00:00',
+			updatedAt:'2026-08-13T08:25:00'
+		},
+		{
+			id:4,
+			agendaNumber:'SK-2026-0004',
+			letterNumber:'004/SK/VIII/2026',
+			letterDate:'2026-08-12',
+			recipient:'Inspektorat Daerah',
+			subject:'Penyampaian Dokumen Tindak Lanjut Hasil Pemeriksaan',
+			category:'Pemberitahuan',
+			priority:'Rahasia',
+			sourceUnit:'Pimpinan',
+			signer:'Pimpinan',
+			notes:'Dokumen bersifat terbatas.',
+			status:'SENT',
+			sentDate:'2026-08-12',
+			fileName:'tindak-lanjut.pdf',
+			fileType:'application/pdf',
+			fileSize:715000,
+			createdAt:'2026-08-12T08:30:00',
+			updatedAt:'2026-08-12T16:15:00'
+		},
+		{
+			id:5,
+			agendaNumber:'SK-2026-0005',
+			letterNumber:'005/SK/VIII/2026',
+			letterDate:'2026-08-11',
+			recipient:'Badan Kepegawaian Daerah',
+			subject:'Permohonan Narasumber Sosialisasi Sistem Informasi Kepegawaian',
+			category:'Permohonan',
+			priority:'Biasa',
+			sourceUnit:'Kepegawaian',
+			signer:'Kepala Subbag Kepegawaian',
+			notes:'',
+			status:'DRAFT',
+			sentDate:'',
+			fileName:'',
+			fileType:'',
+			fileSize:0,
+			createdAt:'2026-08-11T13:20:00',
+			updatedAt:'2026-08-11T13:20:00'
+		},
+		{
+			id:6,
+			agendaNumber:'SK-2026-0006',
+			letterNumber:'006/SK/VIII/2026',
+			letterDate:'2026-08-10',
+			recipient:'Dinas Kesehatan',
+			subject:'Pemberitahuan Jadwal Pemeriksaan Kesehatan Pegawai',
+			category:'Pemberitahuan',
+			priority:'Biasa',
+			sourceUnit:'Umum',
+			signer:'Kepala Bagian Umum',
+			notes:'',
+			status:'ARCHIVED',
+			sentDate:'2026-08-10',
+			fileName:'jadwal-pemeriksaan.pdf',
+			fileType:'application/pdf',
+			fileSize:340000,
+			createdAt:'2026-08-10T08:15:00',
+			updatedAt:'2026-08-11T10:00:00'
+		},
+		{
+			id:7,
+			agendaNumber:'SK-2026-0007',
+			letterNumber:'007/SK/VIII/2026',
+			letterDate:'2026-08-13',
+			recipient:'Komisi Pemilihan Umum',
+			subject:'Konfirmasi Ketersediaan Ruang Pertemuan Koordinasi',
+			category:'Eksternal',
+			priority:'Penting',
+			sourceUnit:'Umum',
+			signer:'Kepala Bagian Umum',
+			notes:'',
+			status:'REJECTED',
+			sentDate:'',
+			fileName:'konfirmasi-ruangan.pdf',
+			fileType:'application/pdf',
+			fileSize:285000,
+			createdAt:'2026-08-13T11:30:00',
+			updatedAt:'2026-08-13T12:15:00'
+		}
+	];
+
+	let records=$state<OutgoingMailRecord[]>([...defaultRecords]);
 	let masterData=$state<MasterDataRecord[]>([]);
+	let initialized=$state(false);
+
 	let search=$state('');
 	let categoryFilter=$state('ALL');
 	let priorityFilter=$state('ALL');
 	let statusFilter=$state<'ALL'|OutgoingMailStatus>('ALL');
 	let dateFilter=$state('');
 	let currentPage=$state(1);
+
 	let formOpen=$state(false);
 	let formMode=$state<'create'|'edit'>('create');
 	let selectedRecord=$state<OutgoingMailRecord|null>(null);
+
 	let detailOpen=$state(false);
 	let detailRecord=$state<OutgoingMailRecord|null>(null);
+
 	let deleteTarget=$state<OutgoingMailRecord|null>(null);
-	let notification=$state<{type:'success'|'info';message:string}|null>(null);
+
+	let notification=$state<{
+		type:'success'|'info';
+		message:string;
+	}|null>(null);
+
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 
-	onMount(async()=>{
+	onMount(()=>{
 		if(!browser)return;
-		loadMasterData();
-		await loadRecords();
+
+		const saved=localStorage.getItem(STORAGE_KEY);
+
+		if(saved){
+			try{
+				const parsed=JSON.parse(saved);
+
+				if(Array.isArray(parsed)){
+					records=parsed;
+				}
+			}catch{
+				records=[...defaultRecords];
+			}
+		}
+
+		const savedMaster=localStorage.getItem(MASTER_STORAGE_KEY);
+
+		if(savedMaster){
+			try{
+				const parsed=JSON.parse(savedMaster);
+
+				if(Array.isArray(parsed)){
+					masterData=parsed;
+				}
+			}catch{
+				masterData=[];
+			}
+		}
+
+		initialized=true;
+	});
+
+	$effect(()=>{
+		if(!browser||!initialized)return;
+
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify(records)
+		);
 	});
 
 	const categories=$derived.by(()=>{
-		const items=masterData.filter((item)=>item.type==='KATEGORI_SURAT'&&item.status==='ACTIVE').map((item)=>item.name);
-		return(items.length?items:fallbackCategories).map((value)=>({value,label:value}));
+		const items=masterData
+			.filter((item)=>
+				item.type==='KATEGORI_SURAT'&&
+				item.status==='ACTIVE'
+			)
+			.map((item)=>item.name);
+
+		return(items.length?items:fallbackCategories).map((value)=>({
+			value,
+			label:value
+		}));
 	});
 
 	const priorities=$derived.by(()=>{
-		const items=masterData.filter((item)=>item.type==='SIFAT_SURAT'&&item.status==='ACTIVE').map((item)=>item.name);
-		return(items.length?items:fallbackPriorities).map((value)=>({value,label:value}));
+		const items=masterData
+			.filter((item)=>
+				item.type==='SIFAT_SURAT'&&
+				item.status==='ACTIVE'
+			)
+			.map((item)=>item.name);
+
+		return(items.length?items:fallbackPriorities).map((value)=>({
+			value,
+			label:value
+		}));
 	});
 
 	const units=$derived.by(()=>{
-		const items=masterData.filter((item)=>item.type==='UNIT_KERJA'&&item.status==='ACTIVE').map((item)=>item.name);
-		return(items.length?items:fallbackUnits).map((value)=>({value,label:value}));
+		const items=masterData
+			.filter((item)=>
+				item.type==='UNIT_KERJA'&&
+				item.status==='ACTIVE'
+			)
+			.map((item)=>item.name);
+
+		return(items.length?items:fallbackUnits).map((value)=>({
+			value,
+			label:value
+		}));
 	});
 
-	const filteredRecords=$derived(records.filter((record)=>{
-		const keyword=search.trim().toLowerCase();
-		const matchesSearch=!keyword||
-			record.agendaNumber.toLowerCase().includes(keyword)||
-			record.letterNumber.toLowerCase().includes(keyword)||
-			record.recipient.toLowerCase().includes(keyword)||
-			record.subject.toLowerCase().includes(keyword)||
-			record.sourceUnit.toLowerCase().includes(keyword)||
-			record.signer.toLowerCase().includes(keyword);
-		const matchesCategory=categoryFilter==='ALL'||record.category===categoryFilter;
-		const matchesPriority=priorityFilter==='ALL'||record.priority===priorityFilter;
-		const matchesStatus=statusFilter==='ALL'||record.status===statusFilter;
-		const matchesDate=!dateFilter||record.letterDate===dateFilter;
-		return matchesSearch&&matchesCategory&&matchesPriority&&matchesStatus&&matchesDate;
-	}));
+	const filteredRecords=$derived(
+		records.filter((record)=>{
+			const keyword=search.trim().toLowerCase();
 
-	const totalPages=$derived(Math.max(1,Math.ceil(filteredRecords.length/perPage)));
-	const paginatedRecords=$derived(filteredRecords.slice((currentPage-1)*perPage,currentPage*perPage));
-	const draftCount=$derived(records.filter((record)=>record.status==='DRAFT').length);
-	const pendingCount=$derived(records.filter((record)=>record.status==='PENDING_APPROVAL').length);
-	const sentCount=$derived(records.filter((record)=>record.status==='SENT'||record.status==='ARCHIVED').length);
-	const hasFilter=$derived(search.trim()!==''||categoryFilter!=='ALL'||priorityFilter!=='ALL'||statusFilter!=='ALL'||dateFilter!=='');
-	const nextAgendaNumber=$derived(generateAgendaNumber(records));
+			const matchesSearch=
+				!keyword||
+				record.agendaNumber.toLowerCase().includes(keyword)||
+				record.letterNumber.toLowerCase().includes(keyword)||
+				record.recipient.toLowerCase().includes(keyword)||
+				record.subject.toLowerCase().includes(keyword)||
+				record.sourceUnit.toLowerCase().includes(keyword)||
+				record.signer.toLowerCase().includes(keyword);
+
+			const matchesCategory=
+				categoryFilter==='ALL'||
+				record.category===categoryFilter;
+
+			const matchesPriority=
+				priorityFilter==='ALL'||
+				record.priority===priorityFilter;
+
+			const matchesStatus=
+				statusFilter==='ALL'||
+				record.status===statusFilter;
+
+			const matchesDate=
+				!dateFilter||
+				record.letterDate===dateFilter;
+
+			return(
+				matchesSearch&&
+				matchesCategory&&
+				matchesPriority&&
+				matchesStatus&&
+				matchesDate
+			);
+		})
+	);
+
+	const totalPages=$derived(
+		Math.max(
+			1,
+			Math.ceil(filteredRecords.length/perPage)
+		)
+	);
+
+	const paginatedRecords=$derived(
+		filteredRecords.slice(
+			(currentPage-1)*perPage,
+			currentPage*perPage
+		)
+	);
+
+	const draftCount=$derived(
+		records.filter((record)=>record.status==='DRAFT').length
+	);
+
+	const pendingCount=$derived(
+		records.filter((record)=>record.status==='PENDING_APPROVAL').length
+	);
+
+	const sentCount=$derived(
+		records.filter((record)=>
+			record.status==='SENT'||
+			record.status==='ARCHIVED'
+		).length
+	);
+
+	const hasFilter=$derived(
+		search.trim()!==''||
+		categoryFilter!=='ALL'||
+		priorityFilter!=='ALL'||
+		statusFilter!=='ALL'||
+		dateFilter!==''
+	);
+
+	const nextAgendaNumber=$derived(
+		generateAgendaNumber(records)
+	);
 
 	$effect(()=>{
-		if(currentPage>totalPages)currentPage=totalPages;
+		if(currentPage>totalPages){
+			currentPage=totalPages;
+		}
 	});
-
-	function loadMasterData(){
-		const saved=localStorage.getItem(MASTER_STORAGE_KEY);
-		if(!saved)return;
-		try{
-			const parsed=JSON.parse(saved);
-			if(Array.isArray(parsed))masterData=parsed;
-		}catch{
-			masterData=[];
-		}
-	}
-
-	async function loadRecords(){
-		try{
-			records=await getOutgoingMails();
-		}catch(error){
-			records=[];
-			notify(getErrorMessage(error,'Data surat keluar gagal dimuat.'),'info');
-		}
-	}
 
 	function generateAgendaNumber(items:OutgoingMailRecord[]){
 		const year=new Date().getFullYear();
+
 		const max=items.reduce((highest,item)=>{
-			const match=item.agendaNumber.match(/^SK-(\d{4})-(\d+)$/);
-			if(!match||Number(match[1])!==year)return highest;
-			return Math.max(highest,Number(match[2]));
+			const match=item.agendaNumber.match(
+				/^SK-(\d{4})-(\d+)$/
+			);
+
+			if(
+				!match||
+				Number(match[1])!==year
+			){
+				return highest;
+			}
+
+			return Math.max(
+				highest,
+				Number(match[2])
+			);
 		},0);
+
 		return`SK-${year}-${String(max+1).padStart(4,'0')}`;
 	}
 
-	function getErrorMessage(error:unknown,fallback:string){
-		if(error instanceof Error&&error.message)return error.message;
-		return fallback;
+	function timestamp(){
+		return new Date().toISOString();
 	}
 
-	function notify(message:string,type:'success'|'info'='success'){
-		notification={type,message};
-		if(notificationTimer)clearTimeout(notificationTimer);
+	function notify(
+		message:string,
+		type:'success'|'info'='success'
+	){
+		notification={
+			type,
+			message
+		};
+
+		if(notificationTimer){
+			clearTimeout(notificationTimer);
+		}
+
 		notificationTimer=setTimeout(()=>{
 			notification=null;
 		},3000);
@@ -158,67 +464,137 @@
 		detailOpen=true;
 	}
 
-	async function saveRecord(payload:OutgoingMailPayload){
-		try{
-			if(formMode==='create'){
-				const saved=await createOutgoingMail(payload);
-				records=[saved,...records];
-				notify('Surat keluar berhasil ditambahkan.');
-			}else if(selectedRecord){
-				const saved=await updateOutgoingMail(selectedRecord.id,payload);
-				records=records.map((record)=>record.id===saved.id?saved:record);
-				if(detailRecord?.id===saved.id)detailRecord=saved;
-				notify('Surat keluar berhasil diperbarui.');
-			}
-			formOpen=false;
-			selectedRecord=null;
-			currentPage=1;
-		}catch(error){
-			notify(getErrorMessage(error,'Surat keluar gagal disimpan.'),'info');
+	function saveRecord(payload:OutgoingMailPayload){
+		const duplicate=records.some((record)=>
+			record.id!==selectedRecord?.id&&
+			record.letterNumber.toLowerCase()===
+			payload.letterNumber.toLowerCase()
+		);
+
+		if(duplicate){
+			notify(
+				'Nomor surat tersebut sudah terdaftar.',
+				'info'
+			);
+
+			return;
 		}
+
+		const now=timestamp();
+
+		if(formMode==='create'){
+			const nextId=
+				Math.max(
+					0,
+					...records.map((record)=>record.id)
+				)+1;
+
+			records=[
+				{
+					id:nextId,
+					agendaNumber:nextAgendaNumber,
+					...payload,
+					createdAt:now,
+					updatedAt:now
+				},
+				...records
+			];
+
+			notify(
+				'Surat keluar berhasil ditambahkan.'
+			);
+		}else if(selectedRecord){
+			const id=selectedRecord.id;
+
+			records=records.map((record)=>
+				record.id===id
+					?{
+						...record,
+						...payload,
+						updatedAt:now
+					}
+					:record
+			);
+
+			if(detailRecord?.id===id){
+				detailRecord=
+					records.find((record)=>
+						record.id===id
+					)??null;
+			}
+
+			notify(
+				'Surat keluar berhasil diperbarui.'
+			);
+		}
+
+		formOpen=false;
+		selectedRecord=null;
+		currentPage=1;
 	}
 
-	async function changeStatus(record:OutgoingMailRecord,status:OutgoingMailStatus){
+	function changeStatus(
+		record:OutgoingMailRecord,
+		status:OutgoingMailStatus
+	){
 		if(record.status===status)return;
-		try{
-			const saved=await updateOutgoingMailStatus(record.id,status);
-			records=records.map((item)=>item.id===saved.id?saved:item);
-			if(detailRecord?.id===saved.id)detailRecord=saved;
-			if(status==='PENDING_APPROVAL'){
-				notify('Surat diajukan untuk persetujuan.');
-			}else if(status==='APPROVED'){
-				notify('Surat berhasil disetujui.');
-			}else if(status==='SENT'){
-				notify('Surat ditandai telah dikirim.');
-			}else if(status==='ARCHIVED'){
-				notify('Surat berhasil diarsipkan.');
-			}else if(status==='DRAFT'){
-				notify('Surat dikembalikan ke Draft.');
-			}else if(status==='REJECTED'){
-				notify('Surat ditolak.');
-			}else{
-				notify('Status surat berhasil diperbarui.');
-			}
-		}catch(error){
-			notify(getErrorMessage(error,'Status surat gagal diperbarui.'),'info');
+
+		const now=timestamp();
+		const today=new Date().toISOString().slice(0,10);
+
+		records=records.map((item)=>{
+			if(item.id!==record.id)return item;
+
+			return{
+				...item,
+				status,
+				sentDate:
+					status==='SENT'
+						?(item.sentDate||today)
+						:item.sentDate,
+				updatedAt:now
+			};
+		});
+
+		detailRecord=
+			records.find((item)=>
+				item.id===record.id
+			)??null;
+
+		if(status==='PENDING_APPROVAL'){
+			notify('Surat diajukan untuk persetujuan.');
+		}else if(status==='APPROVED'){
+			notify('Surat berhasil disetujui.');
+		}else if(status==='SENT'){
+			notify('Surat ditandai telah dikirim.');
+		}else if(status==='ARCHIVED'){
+			notify('Surat berhasil diarsipkan.');
+		}else if(status==='DRAFT'){
+			notify('Surat dikembalikan ke Draft.');
+		}else{
+			notify('Status surat berhasil diperbarui.');
 		}
 	}
 
-	async function confirmDelete(){
+	function confirmDelete(){
 		if(!deleteTarget)return;
-		const target=deleteTarget;
-		try{
-			await deleteOutgoingMail(target.id);
-			records=records.filter((record)=>record.id!==target.id);
-			if(detailRecord?.id===target.id){
-				detailOpen=false;
-				detailRecord=null;
-			}
-			deleteTarget=null;
-			notify('Surat keluar berhasil dihapus.');
-		}catch(error){
-			notify(getErrorMessage(error,'Surat keluar gagal dihapus.'),'info');
+
+		const id=deleteTarget.id;
+
+		records=records.filter((record)=>
+			record.id!==id
+		);
+
+		if(detailRecord?.id===id){
+			detailOpen=false;
+			detailRecord=null;
 		}
+
+		deleteTarget=null;
+
+		notify(
+			'Surat keluar berhasil dihapus.'
+		);
 	}
 
 	function resetFilter(){
