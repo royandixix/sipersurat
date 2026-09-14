@@ -82,6 +82,8 @@ export const DISPOSITION_PRIORITY_LABELS:Record<DispositionPriority,string>={
 	URGENT:'Segera'
 };
 
+
+
 export const DISPOSITION_TARGET_LABELS:Record<DispositionTargetType,string>={
 	USER:'Pengguna',
 	UNIT:'Unit Kerja'

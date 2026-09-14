@@ -1,6 +1,7 @@
 package com.sipersurat.backend.service;
 
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import com.sipersurat.backend.dto.user.ResetPasswordRequest;
 import com.sipersurat.backend.dto.user.UpdateUserStatusRequest;
 import com.sipersurat.backend.dto.user.UserRequest;
@@ -46,8 +47,7 @@ public class UserService {
                 result.getTotalElements(),
                 result.getTotalPages(),
                 result.isFirst(),
-                result.isLast()
-        );
+                result.isLast());
     }
 
     @Transactional(readOnly = true)
@@ -61,8 +61,7 @@ public class UserService {
                 repository.count(),
                 repository.countByStatus(UserStatus.ACTIVE),
                 repository.countByStatus(UserStatus.INACTIVE),
-                repository.countByRole(UserRole.SUPER_ADMIN)
-        );
+                repository.countByRole(UserRole.SUPER_ADMIN));
     }
 
     @Transactional
@@ -109,10 +108,13 @@ public class UserService {
     @Transactional
     public UserResponse updateStatus(Long id, UpdateUserStatusRequest request) {
         User user = findUser(id);
-        if (user.getRole() == UserRole.SUPER_ADMIN &&
-                user.getStatus() == UserStatus.ACTIVE &&
-                request.status() == UserStatus.INACTIVE &&
-                repository.countByRoleAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE) <= 1) {
+        if (request.status() == null) {
+            throw new BadRequestException("Status pengguna wajib diisi");
+        }
+        if (user.getRole() == UserRole.SUPER_ADMIN
+                && user.getStatus() == UserStatus.ACTIVE
+                && request.status() == UserStatus.INACTIVE
+                && repository.countByRoleAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE) <= 1) {
             throw new BadRequestException("Minimal satu Super Administrator aktif harus tersedia");
         }
         user.setStatus(request.status());
@@ -120,8 +122,7 @@ public class UserService {
         audit(
                 request.status() == UserStatus.ACTIVE ? "ACTIVATE_USER" : "DEACTIVATE_USER",
                 request.status() == UserStatus.ACTIVE ? "Mengaktifkan pengguna" : "Menonaktifkan pengguna",
-                saved.getEmail()
-        );
+                saved.getEmail());
         return toResponse(saved);
     }
 
@@ -145,9 +146,17 @@ public class UserService {
     @Transactional
     public void delete(Long id) {
         User user = findUser(id);
-        if (user.getRole() == UserRole.SUPER_ADMIN &&
-                repository.countByRole(UserRole.SUPER_ADMIN) <= 1) {
-            throw new BadRequestException("Super Administrator terakhir tidak dapat dihapus");
+        if (user.getRole() == UserRole.SUPER_ADMIN) {
+            long totalSuperAdmin = repository.countByRole(UserRole.SUPER_ADMIN);
+            if (totalSuperAdmin <= 1) {
+                throw new BadRequestException("Super Administrator terakhir tidak dapat dihapus");
+            }
+            long activeSuperAdmin = repository.countByRoleAndStatus(
+                    UserRole.SUPER_ADMIN,
+                    UserStatus.ACTIVE);
+            if (user.getStatus() == UserStatus.ACTIVE && activeSuperAdmin <= 1) {
+                throw new BadRequestException("Super Administrator aktif terakhir tidak dapat dihapus");
+            }
         }
         String email = user.getEmail();
         String name = user.getName();
@@ -164,15 +173,21 @@ public class UserService {
         if (user.getRole() != UserRole.SUPER_ADMIN) {
             return;
         }
-        long superAdminCount = repository.countByRole(UserRole.SUPER_ADMIN);
-        long activeSuperAdminCount = repository.countByRoleAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE);
-        if (request.role() != UserRole.SUPER_ADMIN && superAdminCount <= 1) {
+        boolean changingRole = request.role() != UserRole.SUPER_ADMIN;
+        boolean becomingInactive = request.status() != UserStatus.ACTIVE;
+        long totalSuperAdmin = repository.countByRole(UserRole.SUPER_ADMIN);
+        if (changingRole && totalSuperAdmin <= 1) {
             throw new BadRequestException("Super Administrator terakhir tidak dapat diubah ke role lain");
         }
-        if (user.getStatus() == UserStatus.ACTIVE &&
-                request.status() == UserStatus.INACTIVE &&
-                activeSuperAdminCount <= 1) {
-            throw new BadRequestException("Minimal satu Super Administrator aktif harus tersedia");
+        boolean removingActiveSuperAdmin = user.getStatus() == UserStatus.ACTIVE
+                && (changingRole || becomingInactive);
+        if (removingActiveSuperAdmin) {
+            long activeSuperAdmin = repository.countByRoleAndStatus(
+                    UserRole.SUPER_ADMIN,
+                    UserStatus.ACTIVE);
+            if (activeSuperAdmin <= 1) {
+                throw new BadRequestException("Minimal satu Super Administrator aktif harus tersedia");
+            }
         }
     }
 
@@ -186,7 +201,10 @@ public class UserService {
     }
 
     private String normalizeEmail(String email) {
-        return email.trim().toLowerCase();
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email wajib diisi");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeSearch(String search) {
@@ -207,8 +225,7 @@ public class UserService {
                 user.getStatus(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                user.getLastLoginAt()
-        );
+                user.getLastLoginAt());
     }
 
     private void audit(String action, String description, String value) {
@@ -217,7 +234,6 @@ public class UserService {
                 "SA",
                 action,
                 description,
-                value
-        );
+                value);
     }
 }
