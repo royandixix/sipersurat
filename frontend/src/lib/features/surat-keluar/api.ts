@@ -77,7 +77,7 @@ export async function createOutgoingMail(payload:OutgoingMailPayload):Promise<Ou
 
 export async function updateOutgoingMail(id:number,payload:OutgoingMailPayload):Promise<OutgoingMailRecord>{
 	const data=await request<OutgoingMailApiRecord>(`${API_URL}/${id}`,{
-		method:'PUT',
+		method:'PUT', 
 		body:JSON.stringify(preparePayload(payload))
 	});
 	return normalizeRecord(data);
