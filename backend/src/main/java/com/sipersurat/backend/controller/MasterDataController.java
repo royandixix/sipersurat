@@ -15,7 +15,10 @@ import java.util.List;
 @RequestMapping("/api/v1/master-data")
 public class MasterDataController {
     private final MasterDataService service;
-    public MasterDataController(MasterDataService service) { this.service = service; }
+
+    public MasterDataController(MasterDataService service) {
+        this.service = service;
+    }
 
     @GetMapping
     public ApiResponse<List<MasterDataResponse>> getAll() {
@@ -28,12 +31,15 @@ public class MasterDataController {
     }
 
     @PostMapping("/{type}")
-    public ResponseEntity<ApiResponse<MasterDataResponse>> create(@PathVariable MasterDataType type, @Valid @RequestBody MasterDataRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Master data berhasil ditambahkan", service.create(type, request)));
+    public ResponseEntity<ApiResponse<MasterDataResponse>> create(@PathVariable MasterDataType type,
+            @Valid @RequestBody MasterDataRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Master data berhasil ditambahkan", service.create(type, request)));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<MasterDataResponse> update(@PathVariable Long id, @Valid @RequestBody MasterDataRequest request) {
+    public ApiResponse<MasterDataResponse> update(@PathVariable Long id,
+            @Valid @RequestBody MasterDataRequest request) {
         return ApiResponse.ok("Master data berhasil diperbarui", service.update(id, request));
     }
 
