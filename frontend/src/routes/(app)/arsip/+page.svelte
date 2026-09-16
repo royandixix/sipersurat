@@ -21,9 +21,8 @@
 	import type{ArchiveRecord,ArchiveSource}from'$lib/features/arsip/types';
 	import type{IncomingMailRecord}from'$lib/features/surat-masuk/types';
 	import type{OutgoingMailRecord}from'$lib/features/surat-keluar/types';
+	import{getArchives,restoreArchiveApi,deleteArchiveApi}from'$lib/features/arsip/api';
 
-	const INCOMING_STORAGE_KEY='sipersurat-incoming-mail';
-	const OUTGOING_STORAGE_KEY='sipersurat-outgoing-mail';
 	const perPage=6;
 
 	const fallbackIncoming:IncomingMailRecord[]=[
@@ -110,8 +109,7 @@
 		}
 	];
 
-	let incomingMails=$state<IncomingMailRecord[]>([...fallbackIncoming]);
-	let outgoingMails=$state<OutgoingMailRecord[]>([...fallbackOutgoing]);
+	let archiveRecords=$state<ArchiveRecord[]>([]);
 	let initialized=$state(false);
 
 	let search=$state('');
@@ -125,118 +123,14 @@
 	let detailRecord=$state<ArchiveRecord|null>(null);
 	let deleteTarget=$state<ArchiveRecord|null>(null);
 
-	let notification=$state<{
-		type:'success'|'info';
-		message:string;
-	}|null>(null);
-
+	let notification=$state<{type:'success'|'info';message:string}|null>(null);
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		const savedIncoming=localStorage.getItem(INCOMING_STORAGE_KEY);
-
-		if(savedIncoming){
-			try{
-				const parsed=JSON.parse(savedIncoming);
-
-				if(Array.isArray(parsed)){
-					incomingMails=parsed;
-				}
-			}catch{
-				incomingMails=[...fallbackIncoming];
-			}
-		}
-
-		const savedOutgoing=localStorage.getItem(OUTGOING_STORAGE_KEY);
-
-		if(savedOutgoing){
-			try{
-				const parsed=JSON.parse(savedOutgoing);
-
-				if(Array.isArray(parsed)){
-					outgoingMails=parsed;
-				}
-			}catch{
-				outgoingMails=[...fallbackOutgoing];
-			}
-		}
-
+		try{archiveRecords=await getArchives();}
+		catch(error){archiveRecords=[];notify(error instanceof Error?error.message:'Data arsip gagal dimuat.','info');}
 		initialized=true;
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-
-		localStorage.setItem(
-			INCOMING_STORAGE_KEY,
-			JSON.stringify(incomingMails)
-		);
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-
-		localStorage.setItem(
-			OUTGOING_STORAGE_KEY,
-			JSON.stringify(outgoingMails)
-		);
-	});
-
-	const archiveRecords=$derived.by(()=>{
-		const incoming:ArchiveRecord[]=incomingMails
-			.filter((record)=>record.status==='ARCHIVED')
-			.map((record)=>({
-				id:`INCOMING-${record.id}`,
-				sourceId:record.id,
-				source:'INCOMING',
-				agendaNumber:record.agendaNumber,
-				letterNumber:record.letterNumber,
-				letterDate:record.letterDate,
-				archiveDate:extractDate(
-					record.updatedAt,
-					record.receivedDate
-				),
-				correspondent:record.sender,
-				subject:record.subject,
-				category:record.category,
-				priority:record.priority,
-				unit:record.targetUnit,
-				notes:record.notes,
-				fileName:record.fileName,
-				fileType:record.fileType,
-				fileSize:record.fileSize
-			}));
-
-		const outgoing:ArchiveRecord[]=outgoingMails
-			.filter((record)=>record.status==='ARCHIVED')
-			.map((record)=>({
-				id:`OUTGOING-${record.id}`,
-				sourceId:record.id,
-				source:'OUTGOING',
-				agendaNumber:record.agendaNumber,
-				letterNumber:record.letterNumber,
-				letterDate:record.letterDate,
-				archiveDate:extractDate(
-					record.updatedAt,
-					record.sentDate||record.letterDate
-				),
-				correspondent:record.recipient,
-				subject:record.subject,
-				category:record.category,
-				priority:record.priority,
-				unit:record.sourceUnit,
-				notes:record.notes,
-				fileName:record.fileName,
-				fileType:record.fileType,
-				fileSize:record.fileSize
-			}));
-
-		return[...incoming,...outgoing]
-			.sort((a,b)=>
-				b.archiveDate.localeCompare(a.archiveDate)
-			);
 	});
 
 	const categories=$derived.by(()=>{
@@ -369,9 +263,6 @@
 		].sort((a,b)=>a.localeCompare(b,'id'));
 	}
 
-	function timestamp(){
-		return new Date().toISOString();
-	}
 
 	function notify(
 		message:string,
@@ -396,67 +287,21 @@
 		detailOpen=true;
 	}
 
-	function restoreArchive(record:ArchiveRecord){
-		const now=timestamp();
-
-		if(record.source==='INCOMING'){
-			incomingMails=incomingMails.map((item)=>
-				item.id===record.sourceId
-					?{
-						...item,
-						status:'COMPLETED',
-						updatedAt:now
-					}
-					:item
-			);
-		}else{
-			outgoingMails=outgoingMails.map((item)=>
-				item.id===record.sourceId
-					?{
-						...item,
-						status:'SENT',
-						updatedAt:now
-					}
-					:item
-			);
-		}
-
-		if(detailRecord?.id===record.id){
-			detailOpen=false;
-			detailRecord=null;
-		}
-
-		notify(
-			record.source==='INCOMING'
-				?'Surat masuk berhasil dipulihkan dari arsip.'
-				:'Surat keluar berhasil dipulihkan dari arsip.'
-		);
+	async function restoreArchive(record:ArchiveRecord){
+		try{
+			await restoreArchiveApi(record.source,record.sourceId);
+			archiveRecords=archiveRecords.filter((item)=>item.id!==record.id);
+			if(detailRecord?.id===record.id){detailOpen=false;detailRecord=null;}
+			notify(record.source==='INCOMING'?'Surat masuk berhasil dipulihkan dari arsip.':'Surat keluar berhasil dipulihkan dari arsip.');
+		}catch(error){notify(error instanceof Error?error.message:'Arsip gagal dipulihkan.','info');}
 	}
 
-	function requestDelete(record:ArchiveRecord){
-		detailOpen=false;
-		detailRecord=null;
-		deleteTarget=record;
-	}
+	function requestDelete(record:ArchiveRecord){detailOpen=false;detailRecord=null;deleteTarget=record;}
 
-	function confirmDelete(){
-		if(!deleteTarget)return;
-
-		if(deleteTarget.source==='INCOMING'){
-			incomingMails=incomingMails.filter(
-				(item)=>item.id!==deleteTarget?.sourceId
-			);
-		}else{
-			outgoingMails=outgoingMails.filter(
-				(item)=>item.id!==deleteTarget?.sourceId
-			);
-		}
-
-		deleteTarget=null;
-
-		notify(
-			'Dokumen arsip berhasil dihapus permanen.'
-		);
+	async function confirmDelete(){
+		if(!deleteTarget)return;const target=deleteTarget;
+		try{await deleteArchiveApi(target.source,target.sourceId);archiveRecords=archiveRecords.filter((item)=>item.id!==target.id);deleteTarget=null;notify('Dokumen arsip berhasil dihapus permanen.');}
+		catch(error){deleteTarget=null;notify(error instanceof Error?error.message:'Arsip gagal dihapus.','info');}
 	}
 
 	function resetFilter(){

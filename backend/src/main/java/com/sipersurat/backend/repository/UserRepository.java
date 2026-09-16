@@ -17,6 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByStatus(UserStatus status);
     long countByRole(UserRole role);
     long countByRoleAndStatus(UserRole role, UserStatus status);
+    long countByDepartmentIgnoreCase(String department);
     @Query("""
             SELECT u
             FROM User u

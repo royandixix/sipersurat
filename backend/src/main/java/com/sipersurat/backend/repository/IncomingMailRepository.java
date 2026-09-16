@@ -14,4 +14,7 @@ public interface IncomingMailRepository extends JpaRepository<IncomingMail,Long>
 
     Optional<IncomingMail> findTopByAgendaNumberStartingWithOrderByAgendaNumberDesc(String prefix);
    
+    long countByTargetUnitIgnoreCase(String targetUnit);
+    long countByCategoryIgnoreCase(String category);
+    long countByPriorityIgnoreCase(String priority);
 }

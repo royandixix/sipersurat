@@ -275,7 +275,7 @@
 
 			<!-- ROLE -->
 			<div class="field mt-5">
-				<label>
+				<label for={`${mode}-role-SUPER_ADMIN`}>
 					Role
 					<span>*</span>
 				</label>
@@ -283,6 +283,7 @@
 				<div class="role-grid">
 					{#each ROLE_OPTIONS as role}
 						<button
+							id={`${mode}-role-${role.value}`}
 							type="button"
 							class:role-active={form.role === role.value}
 							class="role-button"
@@ -332,13 +333,14 @@
 
 				<!-- STATUS -->
 				<div class="field">
-					<label>
+					<label for={`${mode}-status-active`}>
 						Status Akun
 						<span>*</span>
 					</label>
 
 					<div class="status-grid">
 						<button
+							id={`${mode}-status-active`}
 							type="button"
 							class:status-active={form.status === 'ACTIVE'}
 							class="status-button"

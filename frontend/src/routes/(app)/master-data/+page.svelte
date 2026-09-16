@@ -27,8 +27,8 @@
 	import MasterDataModal from '$lib/features/master-data/components/MasterDataModal.svelte';
 	import type{MasterDataPayload,MasterDataRecord,MasterDataStatus,MasterDataType}from '$lib/features/master-data/types';
 	import{MASTER_DATA_CONFIG}from '$lib/features/master-data/types';
+	import{getMasterData,createMasterData,updateMasterData,toggleMasterDataStatus,deleteMasterData}from'$lib/features/master-data/api';
 
-	const STORAGE_KEY='sipersurat-master-data';
 	const perPage=6;
 
 	const defaultData:MasterDataRecord[]=[
@@ -67,23 +67,11 @@
 	let notification=$state<string|null>(null);
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-		const saved=localStorage.getItem(STORAGE_KEY);
-		if(saved){
-			try{
-				const parsed=JSON.parse(saved);
-				if(Array.isArray(parsed))data=parsed;
-			}catch{
-				data=[...defaultData];
-			}
-		}
+		try{data=await getMasterData();}
+		catch(error){showNotification(error instanceof Error?error.message:'Master data gagal dimuat.');data=[];}
 		initialized=true;
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-		localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
 	});
 
 	const config=$derived(MASTER_DATA_CONFIG[activeType]);
@@ -132,62 +120,39 @@
 		notificationTimer=setTimeout(()=>notification=null,3000);
 	}
 
-	function today(){
-		return new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(new Date());
+	async function saveRecord(payload:MasterDataPayload){
+		try{
+			if(formMode==='create'){
+				const saved=await createMasterData(activeType,payload);
+				data=[...data,saved];
+				showNotification(`${config.singular} berhasil ditambahkan.`);
+			}else if(selectedRecord){
+				const saved=await updateMasterData(selectedRecord.id,payload);
+				data=data.map((item)=>item.id===saved.id?saved:item);
+				showNotification(`${config.singular} berhasil diperbarui.`);
+			}
+			formOpen=false;selectedRecord=null;
+		}catch(error){showNotification(error instanceof Error?error.message:'Master data gagal disimpan.');}
 	}
 
-	function saveRecord(payload:MasterDataPayload){
-		const duplicate=data.some((item)=>item.type===activeType&&item.id!==selectedRecord?.id&&item.code.toLowerCase()===payload.code.toLowerCase());
-		if(duplicate){
-			showNotification(`Kode ${payload.code} sudah digunakan.`);
-			return;
-		}
-		if(formMode==='create'){
-			const nextId=Math.max(0,...data.map((item)=>item.id))+1;
-			data=[...data,{
-				id:nextId,
-				type:activeType,
-				name:payload.name,
-				code:payload.code,
-				description:payload.description,
-				status:payload.status,
-				usageCount:0,
-				createdAt:today()
-			}];
-			showNotification(`${config.singular} berhasil ditambahkan.`);
-		}else if(selectedRecord){
-			data=data.map((item)=>item.id===selectedRecord?.id?{
-				...item,
-				name:payload.name,
-				code:payload.code,
-				description:payload.description,
-				status:payload.status
-			}:item);
-			showNotification(`${config.singular} berhasil diperbarui.`);
-		}
-		formOpen=false;
-		selectedRecord=null;
-	}
-
-	function toggleStatus(record:MasterDataRecord){
+	async function toggleStatus(record:MasterDataRecord){
 		if(record.type==='ROLE'&&record.code==='SUPER_ADMIN')return;
-		const nextStatus:MasterDataStatus=record.status==='ACTIVE'?'INACTIVE':'ACTIVE';
-		data=data.map((item)=>item.id===record.id?{...item,status:nextStatus}:item);
-		showNotification(`${record.name} berhasil ${nextStatus==='ACTIVE'?'diaktifkan':'dinonaktifkan'}.`);
+		try{
+			const saved=await toggleMasterDataStatus(record.id);
+			data=data.map((item)=>item.id===saved.id?saved:item);
+			showNotification(`${record.name} berhasil ${saved.status==='ACTIVE'?'diaktifkan':'dinonaktifkan'}.`);
+		}catch(error){showNotification(error instanceof Error?error.message:'Status gagal diperbarui.');}
 	}
 
-	function confirmDelete(){
+	async function confirmDelete(){
 		if(!deleteTarget)return;
-		if(deleteTarget.type==='ROLE'&&deleteTarget.code==='SUPER_ADMIN')return;
-		if(deleteTarget.usageCount>0){
-			showNotification(`${deleteTarget.name} masih digunakan dan belum dapat dihapus.`);
+		const target=deleteTarget;
+		try{
+			await deleteMasterData(target.id);
+			data=data.filter((item)=>item.id!==target.id);
 			deleteTarget=null;
-			return;
-		}
-		const name=deleteTarget.name;
-		data=data.filter((item)=>item.id!==deleteTarget?.id);
-		deleteTarget=null;
-		showNotification(`${name} berhasil dihapus.`);
+			showNotification(`${target.name} berhasil dihapus.`);
+		}catch(error){deleteTarget=null;showNotification(error instanceof Error?error.message:'Master data gagal dihapus.');}
 	}
 
 	function resetFilter(){

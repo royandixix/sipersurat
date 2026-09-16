@@ -12,4 +12,7 @@ public interface OutgoingMailRepository extends JpaRepository<OutgoingMail,Long>
     boolean existsByLetterNumberIgnoreCaseAndIdNot(String letterNumber,Long id);
 
     Optional<OutgoingMail> findTopByAgendaNumberStartingWithOrderByAgendaNumberDesc(String prefix);
+    long countBySourceUnitIgnoreCase(String sourceUnit);
+    long countByCategoryIgnoreCase(String category);
+    long countByPriorityIgnoreCase(String priority);
 }

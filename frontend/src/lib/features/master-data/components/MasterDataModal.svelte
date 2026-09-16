@@ -155,9 +155,9 @@
 				<textarea id={`${type}-description`} bind:value={form.description} placeholder={`Tambahkan deskripsi ${config.singular.toLowerCase()}...`} rows="3"></textarea>
 			</div>
 			<div class="field mt-5">
-				<label>Status</label>
+				<label for={`${type}-status-active`}>Status</label>
 				<div class="status-grid">
-					<button type="button" class:status-selected={form.status==='ACTIVE'} class="status-button" onclick={()=>selectStatus('ACTIVE')}>
+					<button id={`${type}-status-active`} type="button" class:status-selected={form.status==='ACTIVE'} class="status-button" onclick={()=>selectStatus('ACTIVE')}>
 						<span class="size-2 rounded-full bg-emerald-500"></span>
 						<span>Aktif</span>
 						{#if form.status==='ACTIVE'}<Check class="ml-auto size-4"/>{/if}

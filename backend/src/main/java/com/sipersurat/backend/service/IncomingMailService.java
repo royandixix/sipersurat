@@ -12,15 +12,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Year;
 import java.util.List;
 
 @Service
 public class IncomingMailService{
     private final IncomingMailRepository repository;
+    private final NumberingService numberingService;
 
-    public IncomingMailService(IncomingMailRepository repository){
+    public IncomingMailService(IncomingMailRepository repository, NumberingService numberingService){
         this.repository=repository;
+        this.numberingService=numberingService;
     }
 
     @Transactional(readOnly=true)
@@ -206,46 +207,13 @@ public class IncomingMailService{
     }
 
     private String generateAgendaNumber(){
-        int year=Year.now().getValue();
-
-        String prefix=
-                "SM-"+year+"-";
-
-        long lastNumber=repository
-                .findTopByAgendaNumberStartingWithOrderByAgendaNumberDesc(prefix)
+        NumberingService.Rule rule=numberingService.incoming();
+        long lastNumber=repository.findTopByAgendaNumberStartingWithOrderByAgendaNumberDesc(rule.leadingPrefix())
                 .map(IncomingMail::getAgendaNumber)
-                .map(this::extractAgendaSequence)
+                .map(rule::sequenceFrom)
                 .orElse(0L);
-
-        long nextNumber=
-                lastNumber+1;
-
-        return String.format(
-                "%s%04d",
-                prefix,
-                nextNumber
-        );
-    }
-
-    private long extractAgendaSequence(String agendaNumber){
-        if(agendaNumber==null||agendaNumber.isBlank()){
-            return 0L;
-        }
-
-        int lastDash=
-                agendaNumber.lastIndexOf('-');
-
-        if(lastDash<0||lastDash==agendaNumber.length()-1){
-            return 0L;
-        }
-
-        try{
-            return Long.parseLong(
-                    agendaNumber.substring(lastDash+1)
-            );
-        }catch(NumberFormatException exception){
-            return 0L;
-        }
+        long number=Math.max(lastNumber+1,rule.startNumber());
+        return rule.format(number);
     }
 
     private String normalizeRequired(String value,String message){

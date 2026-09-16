@@ -23,8 +23,8 @@
 	import type{OutgoingMailPayload,OutgoingMailRecord,OutgoingMailStatus}from'$lib/features/surat-keluar/types';
 	import{OUTGOING_MAIL_STATUS_OPTIONS}from'$lib/features/surat-keluar/types';
 	import{createOutgoingMail,deleteOutgoingMail,getOutgoingMails,updateOutgoingMail,updateOutgoingMailStatus}from'$lib/features/surat-keluar/api';
+	import{getMasterData}from'$lib/features/master-data/api';
 
-	const MASTER_STORAGE_KEY='sipersurat-master-data';
 	const perPage=6;
 	const fallbackCategories=['Undangan','Permohonan','Pemberitahuan','Internal','Eksternal'];
 	const fallbackPriorities=['Biasa','Penting','Rahasia','Sangat Rahasia'];
@@ -49,8 +49,7 @@
 
 	onMount(async()=>{
 		if(!browser)return;
-		loadMasterData();
-		await loadRecords();
+		await Promise.all([loadMasterData(),loadRecords()]);
 	});
 
 	const categories=$derived.by(()=>{
@@ -96,15 +95,9 @@
 		if(currentPage>totalPages)currentPage=totalPages;
 	});
 
-	function loadMasterData(){
-		const saved=localStorage.getItem(MASTER_STORAGE_KEY);
-		if(!saved)return;
-		try{
-			const parsed=JSON.parse(saved);
-			if(Array.isArray(parsed))masterData=parsed;
-		}catch{
-			masterData=[];
-		}
+	async function loadMasterData(){
+		try{masterData=await getMasterData();}
+		catch{masterData=[];}
 	}
 
 	async function loadRecords(){

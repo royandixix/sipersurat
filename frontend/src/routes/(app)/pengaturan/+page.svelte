@@ -26,9 +26,9 @@
 
 	import type{SystemSettings}from'$lib/features/pengaturan/types';
 	import{
-		SETTINGS_STORAGE_KEY,
 		cloneDefaultSystemSettings
 	}from'$lib/features/pengaturan/types';
+	import{getSettings,saveSettingsApi,resetSettingsApi,getBackup,restoreBackupApi,resetOperationalDataApi}from'$lib/features/pengaturan/api';
 
 	type Tab=
 		|'institution'
@@ -36,19 +36,6 @@
 		|'notifications'
 		|'security'
 		|'data';
-
-	const DATA_KEYS=[
-		'sipersurat-incoming-mail',
-		'sipersurat-outgoing-mail',
-		'sipersurat-dispositions',
-		'sipersurat-master-data',
-		'sipersurat-users'
-	];
-
-	const BACKUP_KEYS=[
-		SETTINGS_STORAGE_KEY,
-		...DATA_KEYS
-	];
 
 	const tabs=[
 		{
@@ -104,23 +91,10 @@
 	let notificationTimer:
 		ReturnType<typeof setTimeout>|undefined;
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		const saved=localStorage.getItem(
-			SETTINGS_STORAGE_KEY
-		);
-
-		if(saved){
-			try{
-				settings=normalizeSettings(
-					JSON.parse(saved)
-				);
-			}catch{
-				settings=cloneDefaultSystemSettings();
-			}
-		}
-
+		try{settings=normalizeSettings(await getSettings());}
+		catch{settings=cloneDefaultSystemSettings();}
 		initialized=true;
 	});
 
@@ -194,257 +168,40 @@
 		},3500);
 	}
 
-	function saveSettings(){
-		if(!browser)return;
-
-		if(!settings.institution.name.trim()){
-			showNotification(
-				'Data belum lengkap',
-				'Nama instansi wajib diisi.',
-				'error'
-			);
-
-			activeTab='institution';
-			return;
-		}
-
-		settings={
-			...settings,
-			institution:{
-				...settings.institution,
-				name:
-					settings.institution.name.trim()
-			},
-			updatedAt:new Date().toISOString()
-		};
-
+	async function saveSettings(){
+		if(!settings.institution.name.trim()){showNotification('Data belum lengkap','Nama instansi wajib diisi.','error');activeTab='institution';return;}
 		try{
-			localStorage.setItem(
-				SETTINGS_STORAGE_KEY,
-				JSON.stringify(settings)
-			);
-
-			hasChanges=false;
-
-			showNotification(
-				'Pengaturan tersimpan',
-				'Perubahan konfigurasi SiPersurat berhasil disimpan.'
-			);
-		}catch{
-			showNotification(
-				'Gagal menyimpan',
-				'Penyimpanan browser tidak dapat menyimpan konfigurasi. Ukuran logo mungkin terlalu besar.',
-				'error'
-			);
-		}
+			settings=normalizeSettings(await saveSettingsApi({...settings,institution:{...settings.institution,name:settings.institution.name.trim()}}));
+			hasChanges=false;showNotification('Pengaturan tersimpan','Perubahan konfigurasi SiPersurat berhasil disimpan.');
+		}catch(error){showNotification('Gagal menyimpan',error instanceof Error?error.message:'Pengaturan gagal disimpan.','error');}
 	}
 
-	function resetSettings(){
-		settings=
-			cloneDefaultSystemSettings();
-
-		if(browser){
-			localStorage.setItem(
-				SETTINGS_STORAGE_KEY,
-				JSON.stringify(settings)
-			);
-		}
-
-		hasChanges=false;
-		confirmAction=null;
-
-		showNotification(
-			'Pengaturan dipulihkan',
-			'Seluruh konfigurasi dikembalikan ke nilai default.'
-		);
+	async function resetSettings(){
+		try{settings=normalizeSettings(await resetSettingsApi());hasChanges=false;confirmAction=null;showNotification('Pengaturan dipulihkan','Seluruh konfigurasi dikembalikan ke nilai default.');}
+		catch(error){showNotification('Gagal mereset',error instanceof Error?error.message:'Pengaturan gagal direset.','error');}
 	}
 
-	function resetOperationalData(){
+	async function resetOperationalData(){
+		try{await resetOperationalDataApi();confirmAction=null;showNotification('Data berhasil direset','Surat Masuk, Surat Keluar, Disposisi, dan Arsip pada database berhasil dihapus.');}
+		catch(error){showNotification('Reset gagal',error instanceof Error?error.message:'Data operasional gagal direset.','error');}
+	}
+
+	async function exportBackup(){
 		if(!browser)return;
-
-		for(const key of DATA_KEYS){
-			localStorage.removeItem(key);
-		}
-
-		confirmAction=null;
-
-		showNotification(
-			'Data berhasil direset',
-			'Data operasional lokal telah dihapus. Pengaturan sistem tetap dipertahankan.'
-		);
-	}
-
-	function exportBackup(){
-		if(!browser)return;
-
-		const data:
-			Record<string,unknown>={};
-
-		for(const key of BACKUP_KEYS){
-			const raw=
-				localStorage.getItem(key);
-
-			if(!raw){
-				data[key]=null;
-				continue;
-			}
-
-			try{
-				data[key]=JSON.parse(raw);
-			}catch{
-				data[key]=raw;
-			}
-		}
-
-		const backup={
-			application:'SiPersurat',
-			version:1,
-			exportedAt:
-				new Date().toISOString(),
-			data
-		};
-
-		const blob=new Blob(
-			[
-				JSON.stringify(
-					backup,
-					null,
-					2
-				)
-			],
-			{
-				type:
-					'application/json;charset=utf-8'
-			}
-		);
-
-		const url=
-			URL.createObjectURL(blob);
-
-		const link=
-			document.createElement('a');
-
-		link.href=url;
-
-		link.download=
-			`backup-sipersurat-${
-				new Date()
-					.toISOString()
-					.slice(0,10)
-			}.json`;
-
-		document.body.appendChild(link);
-
-		link.click();
-
-		link.remove();
-
-		URL.revokeObjectURL(url);
-
-		showNotification(
-			'Backup berhasil dibuat',
-			'File backup SiPersurat berhasil diekspor.'
-		);
-	}
-
-	async function importBackup(
-		file:File
-	){
-		if(!browser)return;
-
 		try{
-			const content=
-				await file.text();
-
-			const parsed=
-				JSON.parse(content);
-
-			if(
-				!parsed||
-				parsed.application!=='SiPersurat'||
-				!parsed.data||
-				typeof parsed.data!=='object'
-			){
-				throw new Error(
-					'invalid-backup'
-				);
-			}
-
-			const importedData=
-				parsed.data as Record<
-					string,
-					unknown
-				>;
-
-			for(const key of BACKUP_KEYS){
-				if(!(key in importedData)){
-					continue;
-				}
-
-				const value=
-					importedData[key];
-
-				if(value===null){
-					localStorage.removeItem(key);
-					continue;
-				}
-
-				if(typeof value==='string'){
-					localStorage.setItem(
-						key,
-						value
-					);
-				}else{
-					localStorage.setItem(
-						key,
-						JSON.stringify(value)
-					);
-				}
-			}
-
-			const importedSettings=
-				importedData[
-					SETTINGS_STORAGE_KEY
-				];
-
-			if(importedSettings){
-				if(
-					typeof importedSettings===
-					'string'
-				){
-					try{
-						settings=
-							normalizeSettings(
-								JSON.parse(
-									importedSettings
-								)
-							);
-					}catch{
-						settings=
-							cloneDefaultSystemSettings();
-					}
-				}else{
-					settings=
-						normalizeSettings(
-							importedSettings
-						);
-				}
-			}
-
-			hasChanges=false;
-
-			showNotification(
-				'Backup berhasil dipulihkan',
-				'Data dari file backup berhasil dimasukkan ke SiPersurat.'
-			);
-		}catch{
-			showNotification(
-				'Import gagal',
-				'File yang dipilih bukan backup SiPersurat yang valid.',
-				'error'
-			);
-		}
+			const backup=await getBackup();
+			const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'});
+			const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`backup-sipersurat-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+			showNotification('Backup berhasil dibuat','File backup SiPersurat berhasil diekspor.');
+		}catch(error){showNotification('Backup gagal',error instanceof Error?error.message:'Backup gagal dibuat.','error');}
 	}
+
+	async function importBackup(file:File){
+		if(!browser)return;
+		try{const parsed=JSON.parse(await file.text());settings=normalizeSettings(await restoreBackupApi(parsed));hasChanges=false;showNotification('Backup berhasil dipulihkan','Data dari file backup berhasil dimasukkan ke SiPersurat.');}
+		catch(error){showNotification('Import gagal',error instanceof Error?error.message:'File yang dipilih bukan backup SiPersurat yang valid.','error');}
+	}
+
 </script>
 
 <svelte:head>
@@ -715,7 +472,7 @@
 
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
 					{confirmAction==='DATA'
-						?'Surat Masuk, Surat Keluar, Disposisi, Master Data, dan data Pengguna pada browser akan dihapus. Tindakan ini tidak dapat dibatalkan.'
+						?'Surat Masuk, Surat Keluar, Disposisi, dan Arsip pada database akan dihapus. Master Data, akun Pengguna, dan Pengaturan Sistem tetap dipertahankan. Tindakan ini tidak dapat dibatalkan.'
 						:'Seluruh konfigurasi Pengaturan Sistem akan kembali ke nilai awal. Data Surat Masuk, Surat Keluar, Disposisi, dan Arsip tidak akan dihapus.'}
 				</p>
 

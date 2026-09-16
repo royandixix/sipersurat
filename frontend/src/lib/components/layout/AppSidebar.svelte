@@ -2,17 +2,15 @@
 	import{page}from'$app/state';
 	import{onMount}from'svelte';
 	import{navigationGroups}from'$lib/config/navigation';
+	import type{AuthUser}from'$lib/types/auth';
 	import{getIncomingMails}from'$lib/features/surat-masuk/api';
 	import Mail from'@lucide/svelte/icons/mail';
 	import ChevronDown from'@lucide/svelte/icons/chevron-down';
 	import X from'@lucide/svelte/icons/x';
 
-	type Props={
-		open?:boolean;
-		onClose?:()=>void;
-	};
+	type Props={user:AuthUser;open?:boolean;onClose?:()=>void;};
 
-	let{open=false,onClose=()=>{}}:Props=$props();
+	let{user,open=false,onClose=()=>{}}:Props=$props();
 	let incomingMailCount=$state<number|null>(null);
 
 	onMount(()=>{
@@ -66,7 +64,7 @@
 				<p class="group-title">{group.label}</p>
 
 				<div class="nav-items">
-					{#each group.items as item}
+					{#each group.items.filter((item)=>item.roles.includes(user.role)) as item}
 						<a
 							href={item.href}
 							class:active={isActive(item.href)}
@@ -95,11 +93,11 @@
 	</nav>
 
 	<div class="sidebar-user">
-		<div class="user-avatar">SA</div>
+		<div class="user-avatar">{user.initials}</div>
 
 		<div class="user-copy">
-			<strong>Super Administrator</strong>
-			<span>admin@sipersurat.id</span>
+			<strong>{user.name}</strong>
+			<span>{user.email}</span>
 		</div>
 
 		<ChevronDown class="size-3.5 text-[#737373]"/>

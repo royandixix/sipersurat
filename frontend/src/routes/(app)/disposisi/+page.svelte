@@ -34,6 +34,10 @@
 		DISPOSITION_PRIORITY_OPTIONS,
 		DISPOSITION_STATUS_OPTIONS
 	}from'$lib/features/disposisi/types';
+	import{getDispositions,createDisposition,updateDisposition,updateDispositionStatus,deleteDisposition}from'$lib/features/disposisi/api';
+	import{getIncomingMails}from'$lib/features/surat-masuk/api';
+	import{getMasterData}from'$lib/features/master-data/api';
+	import{getUsers}from'$lib/features/pengguna/api';
 
 	type StoredUser={
 		id?:number|string;
@@ -47,10 +51,6 @@
 		status?:string;
 	};
 
-	const STORAGE_KEY='sipersurat-dispositions';
-	const INCOMING_STORAGE_KEY='sipersurat-incoming-mail';
-	const MASTER_STORAGE_KEY='sipersurat-master-data';
-	const USER_STORAGE_KEY='sipersurat-users';
 	const perPage=6;
 
 	const fallbackUnits=[
@@ -178,69 +178,13 @@
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 	let selectedStat=$state('total');
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		const saved=localStorage.getItem(STORAGE_KEY);
-
-		if(saved){
-			try{
-				const parsed=JSON.parse(saved);
-				if(Array.isArray(parsed))records=parsed;
-			}catch{
-				records=[...defaultRecords];
-			}
-		}
-
-		const savedIncoming=localStorage.getItem(INCOMING_STORAGE_KEY);
-
-		if(savedIncoming){
-			try{
-				const parsed=JSON.parse(savedIncoming);
-				if(Array.isArray(parsed))incomingMails=parsed;
-			}catch{
-				incomingMails=[...fallbackIncomingMails];
-			}
-		}
-
-		const savedMaster=localStorage.getItem(MASTER_STORAGE_KEY);
-
-		if(savedMaster){
-			try{
-				const parsed=JSON.parse(savedMaster);
-				if(Array.isArray(parsed))masterData=parsed;
-			}catch{
-				masterData=[];
-			}
-		}
-
-		const savedUsers=localStorage.getItem(USER_STORAGE_KEY);
-
-		if(savedUsers){
-			try{
-				const parsed=JSON.parse(savedUsers);
-
-				if(Array.isArray(parsed)){
-					storedUsers=parsed;
-				}else if(Array.isArray(parsed?.users)){
-					storedUsers=parsed.users;
-				}
-			}catch{
-				storedUsers=[];
-			}
-		}
-
+		try{
+			const[result,mails,master,userRecords]=await Promise.all([getDispositions(),getIncomingMails(),getMasterData(),getUsers()]);
+			records=result;incomingMails=mails;masterData=master;storedUsers=userRecords;
+		}catch(error){records=[];incomingMails=[];masterData=[];storedUsers=[];notify(error instanceof Error?error.message:'Data disposisi gagal dimuat.','info');}
 		initialized=true;
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-		localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-	});
-
-	$effect(()=>{
-		if(!browser||!initialized)return;
-		localStorage.setItem(INCOMING_STORAGE_KEY,JSON.stringify(incomingMails));
 	});
 
 	const units=$derived.by(()=>{
@@ -336,29 +280,31 @@
 		dueDateFilter!==''
 	);
 
+	function generateCode(items:DispositionRecord[]):string{
+		const year=new Date().getFullYear();
+		const firstCode=items.find((item)=>item.code)?.code??'';
+		const prefix=firstCode.split(/[-/]/)[0]||'DSP';
+
+		const highest=items.reduce((max,item)=>{
+			const match=item.code.match(/(\d+)$/);
+
+			if(!match)return max;
+
+			const value=Number(match[1]);
+
+			return Number.isFinite(value)
+				?Math.max(max,value)
+				:max;
+		},0);
+
+		return`${prefix}-${year}-${String(highest+1).padStart(4,'0')}`;
+	}
+
 	const nextCode=$derived(generateCode(records));
 
 	$effect(()=>{
 		if(currentPage>totalPages)currentPage=totalPages;
 	});
-
-	function timestamp(){
-		return new Date().toISOString();
-	}
-
-	function generateCode(items:DispositionRecord[]){
-		const year=new Date().getFullYear();
-
-		const max=items.reduce((highest,item)=>{
-			const match=item.code.match(/^DSP-(\d{4})-(\d+)$/);
-
-			if(!match||Number(match[1])!==year)return highest;
-
-			return Math.max(highest,Number(match[2]));
-		},0);
-
-		return`DSP-${year}-${String(max+1).padStart(4,'0')}`;
-	}
 
 	function notify(message:string,type:'success'|'info'='success'){
 		notification={type,message};
@@ -395,198 +341,30 @@
 		detailOpen=true;
 	}
 
-	function incomingStatusFromDisposition(status:DispositionStatus):IncomingMailStatus{
-		if(status==='IN_PROGRESS')return'IN_PROGRESS';
-		if(status==='COMPLETED')return'COMPLETED';
-		return'DISPOSITIONED';
+	async function refreshIncoming(){
+		try{incomingMails=await getIncomingMails();}catch{}
 	}
 
-	function syncIncomingMailStatus(mailId:number){
-		const related=records.filter((record)=>record.incomingMailId===mailId);
-
-		incomingMails=incomingMails.map((mail)=>{
-			if(mail.id!==mailId||mail.status==='ARCHIVED')return mail;
-
-			let status:IncomingMailStatus='PENDING_DISPOSITION';
-
-			if(related.length){
-				if(related.every((record)=>record.status==='COMPLETED')){
-					status='COMPLETED';
-				}else if(related.some((record)=>record.status==='IN_PROGRESS')){
-					status='IN_PROGRESS';
-				}else{
-					status='DISPOSITIONED';
-				}
-			}
-
-			return{
-				...mail,
-				status,
-				updatedAt:timestamp()
-			};
-		});
+	async function saveDisposition(payload:DispositionPayload){
+		try{
+			if(formMode==='create'){const saved=await createDisposition(payload);records=[saved,...records];notify('Disposisi berhasil dibuat.');}
+			else if(selectedRecord){const saved=await updateDisposition(selectedRecord.id,payload);records=records.map((item)=>item.id===saved.id?saved:item);notify('Disposisi berhasil diperbarui.');}
+			await refreshIncoming();formOpen=false;selectedRecord=null;currentPage=1;
+		}catch(error){notify(error instanceof Error?error.message:'Disposisi gagal disimpan.','info');}
 	}
 
-	function saveDisposition(payload:DispositionPayload){
-		const mail=incomingMails.find((item)=>item.id===payload.incomingMailId);
-
-		if(!mail){
-			notify('Data surat masuk tidak ditemukan.','info');
-			return;
-		}
-
-		const now=timestamp();
-
-		if(formMode==='create'){
-			const nextId=Math.max(0,...records.map((record)=>record.id))+1;
-
-			const next:DispositionRecord={
-				id:nextId,
-				code:nextCode,
-				incomingMailId:mail.id,
-				agendaNumber:mail.agendaNumber,
-				letterNumber:mail.letterNumber,
-				sender:mail.sender,
-				subject:mail.subject,
-				targetType:payload.targetType,
-				targetId:payload.targetId,
-				targetName:payload.targetName,
-				instruction:payload.instruction,
-				priority:payload.priority,
-				dueDate:payload.dueDate,
-				notes:payload.notes,
-				status:payload.status,
-				createdBy:'Admin Persuratan',
-				createdAt:now,
-				updatedAt:now,
-				history:[
-					{
-						id:1,
-						status:payload.status,
-						note:`Disposisi dibuat dan diteruskan kepada ${payload.targetName}.`,
-						at:now
-					}
-				]
-			};
-
-			records=[next,...records];
-
-			syncIncomingMailStatus(mail.id);
-
-			notify('Disposisi berhasil dibuat.');
-		}else if(selectedRecord){
-			const id=selectedRecord.id;
-			const oldStatus=selectedRecord.status;
-
-			records=records.map((record)=>{
-				if(record.id!==id)return record;
-
-				const history=record.history??[];
-
-				const nextHistory=
-					oldStatus!==payload.status
-						?[
-							...history,
-							{
-								id:Math.max(0,...history.map((item)=>item.id))+1,
-								status:payload.status,
-								note:`Status disposisi diubah menjadi ${DISPOSITION_STATUS_OPTIONS.find((item)=>item.value===payload.status)?.label??payload.status}.`,
-								at:now
-							}
-						]
-						:history;
-
-				return{
-					...record,
-					targetType:payload.targetType,
-					targetId:payload.targetId,
-					targetName:payload.targetName,
-					instruction:payload.instruction,
-					priority:payload.priority,
-					dueDate:payload.dueDate,
-					notes:payload.notes,
-					status:payload.status,
-					updatedAt:now,
-					history:nextHistory
-				};
-			});
-
-			syncIncomingMailStatus(mail.id);
-
-			notify('Disposisi berhasil diperbarui.');
-		}
-
-		formOpen=false;
-		selectedRecord=null;
-		currentPage=1;
-	}
-
-	function changeStatus(record:DispositionRecord,status:DispositionStatus){
+	async function changeStatus(record:DispositionRecord,status:DispositionStatus){
 		if(record.status===status)return;
-
-		const now=timestamp();
-
-		const notes:Record<DispositionStatus,string>={
-			WAITING:'Disposisi menunggu penerima.',
-			RECEIVED:'Disposisi telah diterima oleh tujuan.',
-			IN_PROGRESS:'Tindak lanjut disposisi mulai diproses.',
-			COMPLETED:'Tindak lanjut disposisi telah diselesaikan.'
-		};
-
-		records=records.map((item)=>{
-			if(item.id!==record.id)return item;
-
-			const history=item.history??[];
-
-			return{
-				...item,
-				status,
-				updatedAt:now,
-				history:[
-					...history,
-					{
-						id:Math.max(0,...history.map((historyItem)=>historyItem.id))+1,
-						status,
-						note:notes[status],
-						at:now
-					}
-				]
-			};
-		});
-
-		syncIncomingMailStatus(record.incomingMailId);
-
-		detailRecord=records.find((item)=>item.id===record.id)??null;
-
-		if(status==='RECEIVED'){
-			notify('Disposisi ditandai telah diterima.');
-		}else if(status==='IN_PROGRESS'){
-			notify('Disposisi mulai diproses.');
-		}else if(status==='COMPLETED'){
-			notify('Disposisi berhasil diselesaikan.');
-		}else{
-			notify('Status disposisi berhasil diperbarui.');
-		}
+		try{
+			const saved=await updateDispositionStatus(record.id,status);records=records.map((item)=>item.id===saved.id?saved:item);detailRecord=saved;await refreshIncoming();
+			if(status==='RECEIVED')notify('Disposisi ditandai telah diterima.');else if(status==='IN_PROGRESS')notify('Disposisi mulai diproses.');else if(status==='COMPLETED')notify('Disposisi berhasil diselesaikan.');else notify('Status disposisi berhasil diperbarui.');
+		}catch(error){notify(error instanceof Error?error.message:'Status disposisi gagal diperbarui.','info');}
 	}
 
-	function confirmDelete(){
-		if(!deleteTarget)return;
-
-		const mailId=deleteTarget.incomingMailId;
-		const id=deleteTarget.id;
-
-		records=records.filter((record)=>record.id!==id);
-
-		syncIncomingMailStatus(mailId);
-
-		if(detailRecord?.id===id){
-			detailOpen=false;
-			detailRecord=null;
-		}
-
-		deleteTarget=null;
-
-		notify('Disposisi berhasil dihapus.');
+	async function confirmDelete(){
+		if(!deleteTarget)return;const target=deleteTarget;
+		try{await deleteDisposition(target.id);records=records.filter((record)=>record.id!==target.id);await refreshIncoming();if(detailRecord?.id===target.id){detailOpen=false;detailRecord=null;}deleteTarget=null;notify('Disposisi berhasil dihapus.');}
+		catch(error){deleteTarget=null;notify(error instanceof Error?error.message:'Disposisi gagal dihapus.','info');}
 	}
 
 	function resetFilter(){

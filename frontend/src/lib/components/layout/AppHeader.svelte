@@ -4,12 +4,16 @@
 	import Bell from '@lucide/svelte/icons/bell';
 	import Settings from '@lucide/svelte/icons/settings';
 	import PanelLeft from '@lucide/svelte/icons/panel-left';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import{goto}from'$app/navigation';
+	import{logout}from'$lib/api';
+	import type{AuthUser}from'$lib/types/auth';
 
-	type Props={
-		onMenuClick?:()=>void;
-	};
+	type Props={user:AuthUser;onMenuClick?:()=>void;};
 
-	let{onMenuClick=()=>{}}:Props=$props();
+	let{user,onMenuClick=()=>{}}:Props=$props();
+	let loggingOut=$state(false);
+	async function signOut(){if(loggingOut)return;loggingOut=true;try{await logout();await goto('/');}finally{loggingOut=false;}}
 </script>
 
 <header class="app-header">
@@ -34,14 +38,14 @@
 			<span>Cari...</span>
 			<kbd>⌘ K</kbd>
 		</button>
-		<button type="button" class="icon-button">
+		<a href="/pengaturan" class="icon-button" aria-label="Pengaturan">
 			<Settings class="size-[17px]"/>
-		</button>
+		</a>
 		<button type="button" class="icon-button notification">
 			<Bell class="size-[17px]"/>
 			<span></span>
 		</button>
-		<button type="button" class="profile">SA</button>
+		<button type="button" class="profile" aria-label="Logout" title={`Logout ${user.name}`} onclick={signOut}>{loggingOut?'...':user.initials}</button>
 	</div>
 </header>
 

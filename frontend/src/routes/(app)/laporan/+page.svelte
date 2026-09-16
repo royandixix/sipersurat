@@ -35,41 +35,14 @@
 		formatReportDate,
 		REPORT_SOURCE_LABELS
 	}from'$lib/features/laporan/types';
+	import{getReports}from'$lib/features/laporan/api';
 
-	const INCOMING_STORAGE_KEY='sipersurat-incoming-mail';
-	const OUTGOING_STORAGE_KEY='sipersurat-outgoing-mail';
-	const DISPOSITION_STORAGE_KEY='sipersurat-dispositions';
 	const perPage=8;
 
-	const incomingStatusLabels:Record<string,string>={
-		RECEIVED:'Diterima',
-		PENDING_DISPOSITION:'Menunggu Disposisi',
-		DISPOSITIONED:'Didisposisikan',
-		IN_PROGRESS:'Diproses',
-		COMPLETED:'Selesai',
-		ARCHIVED:'Diarsipkan'
-	};
+	const monthLabels=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
-	const monthLabels=[
-		'Jan',
-		'Feb',
-		'Mar',
-		'Apr',
-		'Mei',
-		'Jun',
-		'Jul',
-		'Agu',
-		'Sep',
-		'Okt',
-		'Nov',
-		'Des'
-	];
-
-	let incomingMails=$state<IncomingMailRecord[]>([]);
-	let outgoingMails=$state<OutgoingMailRecord[]>([]);
-	let dispositions=$state<DispositionRecord[]>([]);
+	let reportRecords=$state<ReportRecord[]>([]);
 	let initialized=$state(false);
-
 	let search=$state('');
 	let sourceFilter=$state<'ALL'|ReportSource>('ALL');
 	let categoryFilter=$state('ALL');
@@ -80,140 +53,11 @@
 	let currentPage=$state(1);
 	let selectedYear=$state(String(new Date().getFullYear()));
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		incomingMails=readStorage<IncomingMailRecord>(
-			INCOMING_STORAGE_KEY
-		);
-
-		outgoingMails=readStorage<OutgoingMailRecord>(
-			OUTGOING_STORAGE_KEY
-		);
-
-		dispositions=readStorage<DispositionRecord>(
-			DISPOSITION_STORAGE_KEY
-		);
-
+		try{reportRecords=await getReports();}
+		catch{reportRecords=[];}
 		initialized=true;
-	});
-
-	function readStorage<T>(key:string){
-		if(!browser)return[]as T[];
-
-		const saved=localStorage.getItem(key);
-
-		if(!saved)return[]as T[];
-
-		try{
-			const parsed=JSON.parse(saved);
-
-			return Array.isArray(parsed)
-				?parsed as T[]
-				:[]as T[];
-		}catch{
-			return[]as T[];
-		}
-	}
-
-	const reportRecords=$derived.by(()=>{
-		const incoming:ReportRecord[]=incomingMails.map((record)=>({
-			id:`INCOMING-${record.id}`,
-			source:'INCOMING',
-			date:normalizeDate(
-				record.receivedDate||
-				record.letterDate||
-				record.createdAt
-			),
-			agendaNumber:record.agendaNumber,
-			letterNumber:record.letterNumber,
-			correspondent:record.sender,
-			subject:record.subject,
-			category:record.category||'-',
-			unit:record.targetUnit||'-',
-			status:incomingStatusLabels[record.status]??record.status
-		}));
-
-		const outgoing:ReportRecord[]=outgoingMails.map((record)=>({
-			id:`OUTGOING-${record.id}`,
-			source:'OUTGOING',
-			date:normalizeDate(
-				record.sentDate||
-				record.letterDate||
-				record.createdAt
-			),
-			agendaNumber:record.agendaNumber,
-			letterNumber:record.letterNumber,
-			correspondent:record.recipient,
-			subject:record.subject,
-			category:record.category||'-',
-			unit:record.sourceUnit||'-',
-			status:OUTGOING_MAIL_STATUS_LABELS[record.status]??record.status
-		}));
-
-		const dispositionRows:ReportRecord[]=dispositions.map((record)=>({
-			id:`DISPOSITION-${record.id}`,
-			source:'DISPOSITION',
-			date:normalizeDate(
-				record.createdAt||
-				record.updatedAt
-			),
-			agendaNumber:record.agendaNumber,
-			letterNumber:record.letterNumber,
-			correspondent:record.targetName,
-			subject:record.subject,
-			category:'Disposisi',
-			unit:record.targetName||'-',
-			status:DISPOSITION_STATUS_LABELS[record.status]??record.status
-		}));
-
-		const incomingArchive:ReportRecord[]=incomingMails
-			.filter((record)=>record.status==='ARCHIVED')
-			.map((record)=>({
-				id:`ARCHIVE-INCOMING-${record.id}`,
-				source:'ARCHIVE',
-				date:normalizeDate(
-					record.updatedAt||
-						record.receivedDate||
-						record.letterDate
-				),
-				agendaNumber:record.agendaNumber,
-				letterNumber:record.letterNumber,
-				correspondent:record.sender,
-				subject:record.subject,
-				category:record.category||'-',
-				unit:record.targetUnit||'-',
-				status:'Diarsipkan'
-			}));
-
-		const outgoingArchive:ReportRecord[]=outgoingMails
-			.filter((record)=>record.status==='ARCHIVED')
-			.map((record)=>({
-				id:`ARCHIVE-OUTGOING-${record.id}`,
-				source:'ARCHIVE',
-				date:normalizeDate(
-					record.updatedAt||
-						record.sentDate||
-						record.letterDate
-				),
-				agendaNumber:record.agendaNumber,
-				letterNumber:record.letterNumber,
-				correspondent:record.recipient,
-				subject:record.subject,
-				category:record.category||'-',
-				unit:record.sourceUnit||'-',
-				status:'Diarsipkan'
-			}));
-
-		return[
-			...incoming,
-			...outgoing,
-			...dispositionRows,
-			...incomingArchive,
-			...outgoingArchive
-		].sort((a,b)=>
-			b.date.localeCompare(a.date)
-		);
 	});
 
 	const categories=$derived.by(()=>{

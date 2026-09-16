@@ -38,9 +38,6 @@
 		if(open&&event.key==='Escape')onClose();
 	}
 
-	function handleBackdrop(event:MouseEvent){
-		if(event.target===event.currentTarget)onClose();
-	}
 
 	function statusClass(status:DispositionStatus){
 		switch(status){
@@ -73,11 +70,17 @@
 {#if open&&record}
 	<div
 		class="fixed inset-0 z-[260] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm"
-		onclick={handleBackdrop}
 		in:fade={{duration:160}}
 	>
+		<button
+			type="button"
+			class="absolute inset-0 cursor-default"
+			aria-label="Tutup detail disposisi"
+			onclick={onClose}
+		></button>
+
 		<div
-			class="flex max-h-[calc(100dvh-32px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl"
+			class="relative z-10 flex max-h-[calc(100dvh-32px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl"
 			role="dialog"
 			aria-modal="true"
 			in:fly={{y:20,duration:220}}

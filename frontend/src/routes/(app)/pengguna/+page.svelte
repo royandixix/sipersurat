@@ -42,8 +42,8 @@
 	}from'$lib/features/pengguna/types';
 
 	import type{UserRole}from'$lib/types/auth';
+	import{getUsers,createUserApi,updateUserApi,updateUserStatusApi,resetUserPasswordApi,deleteUserApi}from'$lib/features/pengguna/api';
 
-	const STORAGE_KEY='sipersurat-users';
 	const perPage=6;
 
 	const defaultUsers:UserRecord[]=[
@@ -176,46 +176,11 @@
 	let notificationTimer:
 		ReturnType<typeof setTimeout>|undefined;
 
-	onMount(()=>{
+	onMount(async()=>{
 		if(!browser)return;
-
-		const saved=
-			localStorage.getItem(
-				STORAGE_KEY
-			);
-
-		if(saved){
-			try{
-				const parsed=
-					JSON.parse(saved);
-
-				if(Array.isArray(parsed)){
-					users=parsed;
-				}
-			}catch{
-				users=[
-					...defaultUsers
-				];
-			}
-		}
-
-		requestAnimationFrame(()=>{
-			initialized=true;
-		});
-	});
-
-	$effect(()=>{
-		if(
-			!browser||
-			!initialized
-		){
-			return;
-		}
-
-		localStorage.setItem(
-			STORAGE_KEY,
-			JSON.stringify(users)
-		);
+		try{users=await getUsers();}
+		catch(error){users=[];notify(error instanceof Error?error.message:'Data pengguna gagal dimuat.','info');}
+		initialized=true;
 	});
 
 	const filteredUsers=$derived(
@@ -347,191 +312,42 @@
 			},3000);
 	}
 
-	function formattedToday(){
-		return new Intl.DateTimeFormat(
-			'id-ID',
-			{
-				day:'2-digit',
-				month:'short',
-				year:'numeric'
-			}
-		).format(
-			new Date()
-		);
+	async function createUser(payload:UserFormPayload){
+		try{
+			const saved=await createUserApi(payload);
+			users=[saved,...users];createOpen=false;currentPage=1;notify(`${payload.name} berhasil ditambahkan.`);
+		}catch(error){notify(error instanceof Error?error.message:'Pengguna gagal ditambahkan.','info');}
 	}
 
-	function createUser(
-		payload:UserFormPayload
-	){
-		const duplicate=
-			users.some(
-				(user)=>
-					(user.email??'')
-						.toLowerCase()===
-					payload.email
-						.toLowerCase()
-			);
+	function openEdit(user:UserRecord){selectedUser=user;editOpen=true;}
 
-		if(duplicate){
-			notify(
-				'Email tersebut sudah digunakan.',
-				'info'
-			);
-
-			return;
-		}
-
-		const nextId=
-			Math.max(
-				0,
-				...users.map(
-					(user)=>user.id
-				)
-			)+1;
-
-		users=[
-			{
-				id:nextId,
-				name:payload.name,
-				email:payload.email,
-				role:payload.role,
-				department:
-					payload.department,
-				status:payload.status,
-				createdAt:
-					formattedToday(),
-				lastLogin:
-					'Belum pernah login'
-			},
-			...users
-		];
-
-		createOpen=false;
-		currentPage=1;
-
-		notify(
-			`${payload.name} berhasil ditambahkan.`
-		);
-	}
-
-	function openEdit(
-		user:UserRecord
-	){
-		selectedUser=user;
-		editOpen=true;
-	}
-
-	function updateUser(
-		payload:UserFormPayload
-	){
+	async function updateUser(payload:UserFormPayload){
 		if(!selectedUser)return;
-
-		const duplicate=
-			users.some(
-				(user)=>
-					user.id!==
-						selectedUser?.id&&
-					(user.email??'')
-						.toLowerCase()===
-					payload.email
-						.toLowerCase()
-			);
-
-		if(duplicate){
-			notify(
-				'Email tersebut sudah digunakan.',
-				'info'
-			);
-
-			return;
-		}
-
-		users=
-			users.map((user)=>
-				user.id===
-				selectedUser?.id
-					?{
-						...user,
-						name:payload.name,
-						email:payload.email,
-						role:payload.role,
-						department:
-							payload.department,
-						status:
-							payload.status
-					}
-					:user
-			);
-
-		editOpen=false;
-		selectedUser=null;
-
-		notify(
-			`${payload.name} berhasil diperbarui.`
-		);
+		try{
+			const saved=await updateUserApi(selectedUser.id,payload);
+			users=users.map((user)=>user.id===saved.id?saved:user);editOpen=false;selectedUser=null;notify(`${payload.name} berhasil diperbarui.`);
+		}catch(error){notify(error instanceof Error?error.message:'Pengguna gagal diperbarui.','info');}
 	}
 
-	function toggleStatus(
-		user:UserRecord
-	){
-		if(user.id===1)return;
-
-		const nextStatus:
-			UserStatus=
-				user.status==='ACTIVE'
-					?'INACTIVE'
-					:'ACTIVE';
-
-		users=
-			users.map((item)=>
-				item.id===user.id
-					?{
-						...item,
-						status:
-							nextStatus
-					}
-					:item
-			);
-
-		notify(
-			nextStatus==='ACTIVE'
-				?`${user.name} berhasil diaktifkan.`
-				:`${user.name} berhasil dinonaktifkan.`
-		);
+	async function toggleStatus(user:UserRecord){
+		const nextStatus:UserStatus=user.status==='ACTIVE'?'INACTIVE':'ACTIVE';
+		try{
+			const saved=await updateUserStatusApi(user.id,nextStatus);
+			users=users.map((item)=>item.id===saved.id?saved:item);notify(nextStatus==='ACTIVE'?`${user.name} berhasil diaktifkan.`:`${user.name} berhasil dinonaktifkan.`);
+		}catch(error){notify(error instanceof Error?error.message:'Status pengguna gagal diperbarui.','info');}
 	}
 
-	function resetPassword(
-		user:UserRecord
-	){
-		notify(
-			`Reset password ${user.email} berhasil disiapkan.`,
-			'info'
-		);
+	async function resetPassword(user:UserRecord){
+		const value=window.prompt(`Masukkan password baru untuk ${user.email}`,'password1234');
+		if(!value)return;
+		try{await resetUserPasswordApi(user.id,value);notify(`Password ${user.email} berhasil direset.`);}
+		catch(error){notify(error instanceof Error?error.message:'Password gagal direset.','info');}
 	}
 
-	function confirmDelete(){
-		if(
-			!deleteUserTarget||
-			deleteUserTarget.id===1
-		){
-			return;
-		}
-
-		const name=
-			deleteUserTarget.name;
-
-		users=
-			users.filter(
-				(user)=>
-					user.id!==
-						deleteUserTarget?.id
-			);
-
-		deleteUserTarget=null;
-
-		notify(
-			`${name} berhasil dihapus.`
-		);
+	async function confirmDelete(){
+		if(!deleteUserTarget)return;const target=deleteUserTarget;
+		try{await deleteUserApi(target.id);users=users.filter((user)=>user.id!==target.id);deleteUserTarget=null;notify(`${target.name} berhasil dihapus.`);}
+		catch(error){deleteUserTarget=null;notify(error instanceof Error?error.message:'Pengguna gagal dihapus.','info');}
 	}
 
 	function resetFilters(){

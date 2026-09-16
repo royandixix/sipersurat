@@ -86,3 +86,57 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC);
+CREATE TABLE IF NOT EXISTS disposition_histories(
+    id BIGSERIAL PRIMARY KEY,
+    disposition_id BIGINT NOT NULL REFERENCES dispositions(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL,
+    note TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS master_data(
+    id BIGSERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    code VARCHAR(100) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uk_master_data_type_code UNIQUE(type, code)
+);
+
+CREATE TABLE IF NOT EXISTS system_settings(
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_disposition_histories_disposition_id ON disposition_histories(disposition_id);
+CREATE INDEX IF NOT EXISTS idx_master_data_type ON master_data(type);
+CREATE INDEX IF NOT EXISTS idx_master_data_status ON master_data(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_master_data_type_code_unique ON master_data(type, code);
+
+INSERT INTO master_data(type,name,code,description,status)
+VALUES
+('ROLE','Super Administrator','SUPER_ADMIN','Akses penuh ke seluruh sistem.','ACTIVE'),
+('ROLE','Admin Persuratan','ADMIN_PERSURATAN','Mengelola proses administrasi persuratan.','ACTIVE'),
+('ROLE','Pimpinan','PIMPINAN','Menerima dan memberikan disposisi.','ACTIVE'),
+('ROLE','Staff','STAFF','Pengguna operasional SiPersurat.','ACTIVE'),
+('UNIT_KERJA','Administrator','ADMINISTRATOR','Unit administrasi sistem.','ACTIVE'),
+('UNIT_KERJA','Tata Usaha','TATA_USAHA','Unit pengelolaan administrasi persuratan.','ACTIVE'),
+('UNIT_KERJA','Pimpinan','PIMPINAN','Unit pimpinan instansi.','ACTIVE'),
+('UNIT_KERJA','Sekretariat','SEKRETARIAT','Unit sekretariat.','ACTIVE'),
+('UNIT_KERJA','Keuangan','KEUANGAN','Unit pengelolaan keuangan.','ACTIVE'),
+('UNIT_KERJA','Kepegawaian','KEPEGAWAIAN','Unit administrasi kepegawaian.','ACTIVE'),
+('UNIT_KERJA','Umum','UMUM','Unit pelayanan umum.','ACTIVE'),
+('KATEGORI_SURAT','Undangan','UNDANGAN','Surat yang berisi undangan kegiatan atau rapat.','ACTIVE'),
+('KATEGORI_SURAT','Permohonan','PERMOHONAN','Surat permohonan resmi.','ACTIVE'),
+('KATEGORI_SURAT','Pemberitahuan','PEMBERITAHUAN','Surat pemberitahuan informasi resmi.','ACTIVE'),
+('KATEGORI_SURAT','Internal','INTERNAL','Surat untuk kebutuhan internal instansi.','ACTIVE'),
+('KATEGORI_SURAT','Eksternal','EKSTERNAL','Surat untuk pihak di luar instansi.','ACTIVE'),
+('SIFAT_SURAT','Biasa','BIASA','Surat dengan tingkat prioritas normal.','ACTIVE'),
+('SIFAT_SURAT','Penting','PENTING','Surat yang membutuhkan perhatian khusus.','ACTIVE'),
+('SIFAT_SURAT','Rahasia','RAHASIA','Surat dengan akses terbatas.','ACTIVE'),
+('SIFAT_SURAT','Sangat Rahasia','SANGAT_RAHASIA','Surat dengan tingkat kerahasiaan tertinggi.','ACTIVE')
+ON CONFLICT(type, code) DO NOTHING;
