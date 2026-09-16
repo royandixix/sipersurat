@@ -1,2 +1,34 @@
 .txt
 .env
+
+# ========================================
+# Local / generated files
+# ========================================
+
+# macOS
+.DS_Store
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Frontend generated files
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.vite/
+
+# Backend generated files
+backend/target/
+
+# Logs
+*.log
+backend.log
+frontend.log
+
+# Local SIPERSURAT backups
+.sipersurat-backup-*/
+.backup-final-frontend/
