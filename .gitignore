@@ -32,3 +32,5 @@ frontend.log
 # Local SIPERSURAT backups
 .sipersurat-backup-*/
 .backup-final-frontend/
+
+*.backup

@@ -15,7 +15,10 @@ import java.util.List;
 @RequestMapping("/api/v1/dispositions")
 public class DispositionController {
     private final DispositionService service;
-    public DispositionController(DispositionService service) { this.service = service; }
+
+    public DispositionController(DispositionService service) {
+        this.service = service;
+    }
 
     @GetMapping
     public ApiResponse<List<DispositionResponse>> getAll() {
@@ -29,16 +32,19 @@ public class DispositionController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<DispositionResponse>> create(@Valid @RequestBody DispositionRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Disposisi berhasil dibuat", service.create(request)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Disposisi berhasil dibuat", service.create(request)));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<DispositionResponse> update(@PathVariable Long id, @Valid @RequestBody DispositionRequest request) {
+    public ApiResponse<DispositionResponse> update(@PathVariable Long id,
+            @Valid @RequestBody DispositionRequest request) {
         return ApiResponse.ok("Disposisi berhasil diperbarui", service.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
-    public ApiResponse<DispositionResponse> updateStatus(@PathVariable Long id, @Valid @RequestBody DispositionStatusRequest request) {
+    public ApiResponse<DispositionResponse> updateStatus(@PathVariable Long id,
+            @Valid @RequestBody DispositionStatusRequest request) {
         return ApiResponse.ok("Status disposisi berhasil diperbarui", service.updateStatus(id, request.status()));
     }
 

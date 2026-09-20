@@ -288,6 +288,7 @@
 							:'Edit Surat Masuk'}
 					</h2>
 
+
 					<p>
 						{mode==='create'
 							?'Catat surat yang baru diterima ke SiPersurat.'

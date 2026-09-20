@@ -1,5 +1,4 @@
 <script lang="ts">
-	import{browser}from'$app/environment';
 	import{onMount}from'svelte';
 	import{fly}from'svelte/transition';
 	import*as Card from'$lib/components/ui/card/index.js';
@@ -19,12 +18,12 @@
 	import IncomingMailFormModal from'$lib/features/surat-masuk/components/IncomingMailFormModal.svelte';
 	import IncomingMailDetailModal from'$lib/features/surat-masuk/components/IncomingMailDetailModal.svelte';
 	import IncomingMailTable from'$lib/features/surat-masuk/components/IncomingMailTable.svelte';
+	import{getMasterData}from'$lib/features/master-data/api';
 	import type{MasterDataRecord}from'$lib/features/master-data/types';
 	import type{IncomingMailPayload,IncomingMailRecord,IncomingMailStatus}from'$lib/features/surat-masuk/types';
 	import{INCOMING_MAIL_STATUS_OPTIONS}from'$lib/features/surat-masuk/types';
 	import{createIncomingMail,deleteIncomingMail,getIncomingMails,updateIncomingMail,updateIncomingMailStatus}from'$lib/features/surat-masuk/api';
 
-	const MASTER_STORAGE_KEY='sipersurat-master-data';
 	const perPage=6;
 	const fallbackCategories=['Undangan','Permohonan','Pemberitahuan','Internal','Eksternal'];
 	const fallbackPriorities=['Biasa','Penting','Rahasia','Sangat Rahasia'];
@@ -48,9 +47,7 @@
 	let notificationTimer:ReturnType<typeof setTimeout>|undefined;
 
 	onMount(async()=>{
-		if(!browser)return;
-		loadMasterData();
-		await loadRecords();
+		await Promise.all([loadMasterData(),loadRecords()]);
 	});
 
 	const categories=$derived.by(()=>{
@@ -97,12 +94,9 @@
 		if(currentPage>totalPages)currentPage=totalPages;
 	});
 
-	function loadMasterData(){
-		const saved=localStorage.getItem(MASTER_STORAGE_KEY);
-		if(!saved)return;
+	async function loadMasterData(){
 		try{
-			const parsed=JSON.parse(saved);
-			if(Array.isArray(parsed))masterData=parsed;
+			masterData=await getMasterData();
 		}catch{
 			masterData=[];
 		}

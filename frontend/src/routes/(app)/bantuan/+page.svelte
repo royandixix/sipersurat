@@ -1,10 +1,10 @@
 <script lang="ts">
-	import{browser}from'$app/environment';
 	import{onMount}from'svelte';
 	import{fly}from'svelte/transition';
 	import*as Card from'$lib/components/ui/card/index.js';
 	import{Button}from'$lib/components/ui/button/index.js';
 	import{Input}from'$lib/components/ui/input/index.js';
+	import{getSettings}from'$lib/features/pengaturan/api';
 
 	import LifeBuoy from'@lucide/svelte/icons/life-buoy';
 	import Search from'@lucide/svelte/icons/search';
@@ -50,19 +50,6 @@
 		category:Exclude<GuideCategory,'ALL'>;
 	};
 
-	const SETTINGS_STORAGE_KEY='sipersurat-settings';
-
-	const categories:[
-		{
-			value:GuideCategory;
-			label:string;
-		}
-	]=[
-		{
-			value:'ALL',
-			label:'Semua'
-		}
-	] as never;
 
 	const categoryOptions:{
 		value:GuideCategory;
@@ -215,7 +202,7 @@
 		{
 			id:'faq-10',
 			question:'Bagaimana cara Export laporan ke Excel?',
-			answer:'Pada halaman Laporan pilih Export Excel. Dalam frontend saat ini file yang dihasilkan menggunakan format CSV yang dapat langsung dibuka menggunakan Microsoft Excel atau WPS Office.',
+			answer:'Pada halaman Laporan pilih Export Excel. Sistem menghasilkan file CSV yang dapat langsung dibuka menggunakan Microsoft Excel, WPS Office, atau aplikasi spreadsheet lainnya.',
 			category:'REPORT'
 		},
 		{
@@ -245,13 +232,13 @@
 		{
 			id:'faq-15',
 			question:'Bagaimana melakukan backup data SiPersurat?',
-			answer:'Buka Pengaturan Sistem lalu masuk ke Data Sistem dan pilih Export Backup. Data frontend akan disimpan ke file JSON yang dapat digunakan kembali melalui fitur Import Backup.',
+			answer:'Buka Pengaturan Sistem lalu masuk ke Data Sistem dan pilih Export Backup. Sistem mengambil data dari backend dan database lalu menyimpannya ke file JSON yang dapat dipulihkan kembali melalui Import Backup.',
 			category:'SYSTEM'
 		},
 		{
 			id:'faq-16',
 			question:'Di mana data aplikasi disimpan saat ini?',
-			answer:'Pada tahap frontend saat ini data SiPersurat masih disimpan menggunakan localStorage browser. Setelah integrasi backend selesai, data akan dipindahkan ke API dan database server.',
+			answer:'Data utama SiPersurat disimpan pada database PostgreSQL Supabase melalui backend API Spring Boot. Browser hanya digunakan untuk kebutuhan antarmuka dan preferensi lokal tertentu seperti penyimpanan email login.',
 			category:'SYSTEM'
 		}
 	];
@@ -264,29 +251,12 @@
 	let adminPhone=$state('');
 	let institutionName=$state('SiPersurat');
 
-	onMount(()=>{
-		if(!browser)return;
-
-		const saved=localStorage.getItem(
-			SETTINGS_STORAGE_KEY
-		);
-
-		if(!saved)return;
-
+	onMount(async()=>{
 		try{
-			const parsed=JSON.parse(saved);
-
-			institutionName=
-				parsed?.institution?.name||
-				'SiPersurat';
-
-			adminEmail=
-				parsed?.institution?.email||
-				'';
-
-			adminPhone=
-				parsed?.institution?.phone||
-				'';
+			const settings=await getSettings();
+			institutionName=settings.institution.name||'SiPersurat';
+			adminEmail=settings.institution.email||'';
+			adminPhone=settings.institution.phone||'';
 		}catch{
 			institutionName='SiPersurat';
 			adminEmail='';
@@ -765,7 +735,7 @@
 								</span>
 
 								<strong class="text-[10px]">
-									localStorage
+									PostgreSQL (Supabase)
 								</strong>
 							</div>
 
@@ -774,8 +744,8 @@
 									Status
 								</span>
 
-								<span class="rounded-md bg-amber-50 px-2 py-1 text-[9px] font-semibold text-amber-700">
-									Frontend Mode
+								<span class="rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-semibold text-emerald-700">
+									Backend Terintegrasi
 								</span>
 							</div>
 						</div>

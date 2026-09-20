@@ -43,7 +43,7 @@
 			</h2>
 
 			<p class="mt-1 text-xs leading-5 text-muted-foreground">
-				Kelola backup, pemulihan, dan data lokal aplikasi SiPersurat.
+				Kelola backup, pemulihan, dan data database aplikasi SiPersurat.
 			</p>
 		</div>
 	</div>
@@ -114,17 +114,17 @@
 
 				<div>
 					<h3 class="text-sm font-semibold">
-						Penyimpanan Lokal
+						Penyimpanan Database
 					</h3>
 
 					<p class="mt-1 max-w-xl text-[10px] leading-5 text-muted-foreground">
-						Selama backend belum terintegrasi, seluruh data aplikasi masih disimpan di browser menggunakan localStorage.
+						Data utama aplikasi tersimpan pada PostgreSQL Supabase dan diakses melalui backend API Spring Boot.
 					</p>
 				</div>
 			</div>
 
-			<span class="w-fit rounded-md bg-amber-50 px-2.5 py-1.5 text-[10px] font-semibold text-amber-700">
-				Frontend Mode
+			<span class="w-fit rounded-md bg-emerald-50 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700">
+				Backend Terintegrasi
 			</span>
 		</div>
 	</div>
@@ -138,7 +138,7 @@
 					</h3>
 
 					<p class="mt-1 max-w-xl text-[10px] leading-5 text-red-700/70">
-						Menghapus Surat Masuk, Surat Keluar, Disposisi, Master Data, dan data Pengguna dari penyimpanan browser. Pengaturan sistem tetap dipertahankan.
+						Menghapus Surat Masuk, Surat Keluar, Disposisi, dan Arsip dari database. Master Data, akun Pengguna, dan Pengaturan Sistem tetap dipertahankan.
 					</p>
 				</div>
 
